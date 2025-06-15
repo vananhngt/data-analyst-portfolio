@@ -35,11 +35,26 @@ I’m a curious and determined person, quick to learn and passionate about conti
 
 - **Description:** Using the `titanic_train` dataset, this project conducts a thorough exploratory analysis with R.  The study investigates survival patterns based on gender, age, ticket fare, family presence, and class. Key visualizations include bar charts, density plots, ridge plots, and box plots highlighting relationships between features and survival outcomes. A custom variable for family size was introduced and segmented into categories to evaluate its impact.
 
-- **Skills / Tools Used:** R (ggplot2, dplyr, ggridges), data wrangling, exploratory data analysis, statistical graphics, Quarto
+- **Skills / Tools Used:** R (ggplot2, dplyr, ggridges), data wrangling, EDA, Quarto
 
 - **Results & Insights:** The analysis revealed that female passengers and children under the age of 10 had significantly higher survival rates. Passengers traveling in small families tended to have better outcomes compared to those traveling alone or in large family groups. Higher ticket fares, often associated with first-class accommodations, were strongly linked to increased chances of survival. Additionally, clear differences were observed in the distributions of age and fare between survivors and non-survivors, highlighting the influence of both demographic and socio-economic factors on survival outcomes.
 
 - **Deliverables:**
   - [Titanic Survival Analysis Report](https://vananhngt.github.io/data-analyst-portfolio/Titanic-Survival-Analysis.html)
+
+#### Yelp Restaurant Insights: Las Vegas
+
+- **Goal:** Help prospective restaurant owners make data-driven decisions on concept and location using Yelp reviews and business data.
+
+- **Description:** The project involved analyzing Yelp publicly available data to uncover what contributes to high ratings and long-term success in Las Vegas restaurants. Exploratory and predictive techniques were used to evaluate restaurant categories, geographic performance, review patterns, and closure risks. The findings focus on how customer experience, value, online engagement, and location affect success.
+
+- **Skills / Tools Used:** R (tidyverse, ggplot2, sentiment analysis), data wrangling, EDA
+
+- **Results & Insights:** The analysis revealed that brunch and breakfast restaurants showed the highest potential in terms of customer engagement and long-term viability. Among various geographic locations, the Southwest and Southeast regions of Las Vegas emerged as particularly favorable for opening new restaurants. Establishments that demonstrated strong service quality, high food ratings, and active Yelp engagement were found to have a significantly lower risk of closure. These insights supported a data-driven recommendation presented to a simulated client.
+
+- **Deliverables:**
+
+
+
 
 
