@@ -1,0 +1,1616 @@
+---
+title: "Decoding Yelp Business Success"
+subtitle: "Insights from Data on Restaurant Ratings and Closures in Las Vegas"
+output: 
+  html_document:
+    css: "final.css"
+    toc: true
+    warning: false
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE
+)
+```
+
+```{r, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(lubridate)
+library(wordcloud)
+library(tidytext)
+library(DT)
+library(leaflet)
+library(tm)
+library(RColorBrewer)
+library(viridis)
+library(gridExtra)
+library(igraph)
+library(widyr)
+library(ggraph)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(readr)
+library(knitr)
+library(ggmap)
+library(MetBrewer)
+library(cluster)
+library(caret)
+library(ranger)
+library(ggridges)
+library(DMwR2)
+library(mgcv)
+library(scales)
+library(plotly)
+library(MASS)
+library(htmltools)
+library(patchwork)
+```
+
+```{r, include=FALSE}
+business_file <- "yelp_business.csv"
+checkin_file <- "yelp_checkin.csv"
+hours_file <- "yelp_business_hours.csv"
+attributes_file <- "yelp_business_attributes.csv"
+review_file <- "yelp_review.csv"
+tip_file <- "yelp_tip.csv"
+user_file <- "yelp_user.csv"
+
+yelp_business <- read.csv(business_file)
+yelp_review <- read.csv(review_file)
+yelp_checkin <- read.csv(checkin_file)
+yelp_hours <- read.csv(hours_file)
+yelp_attributes <- read.csv(attributes_file)
+yelp_tip <- read.csv(tip_file)
+yelp_user <- read.csv(user_file)
+```
+
+```{r, include=FALSE}
+city_counts <- yelp_business %>%
+  count(city, sort = TRUE)  
+
+print("Top 20 Cities with Most Restaurants:")
+print(head(city_counts, 20))
+
+if("country" %in% colnames(yelp_business)) {
+  country_counts <- yelp_business %>%
+    count(country, sort = TRUE)  
+} else {
+  country_counts <- yelp_business %>%
+    count(state, sort = TRUE)  
+}
+
+print("Top 20 Countries/States with Most Restaurants:")
+print(head(country_counts, 20))
+```
+
+# Introduction
+
+In today's digital age, online reviews have become critical in shaping customer choices, particularly in the restaurant industry. Yelp, one of the most widely used review platforms, hosts over 287 million reviews from more than 4 million businesses, making it a major influence in the restaurant sector (Yelp, 2023). A strong Yelp presence not only impacts a restaurant's visibility but also directly influences customer foot traffic and revenue. Research has demonstrated that online reviews significantly affect customer behavior, with 46% of restaurant-goers saying that positive online reviews made them more likely to dine at a restaurant (PYMNTS, 2023). Furthermore, studies indicate that a one-star increase in a Yelp rating can lead to a 5-9% rise in revenue, illustrating the direct financial impact of customer feedback (Luca, 2016).
+
+For restaurant owners, securing high ratings and positive customer engagement on Yelp is a strategic necessity. Beyond offering quality food and optimizing factors such as pricing and service quality, businesses must maintain a strong digital presence to remain competitive. A well-maintained Yelp profile with positive reviews and high ratings can enhance customer trust and ultimately drive profitability. Further research highlights that high Yelp ratings correlate with increased purchase intentions, reinforcing the need for businesses to manage their online reputation actively (Gupta, 2021).
+
+With over 40 million annual visitors, a thriving food scene, and intense competition, Las Vegas is one of the most review-driven restaurant markets in the U.S. Tourists and locals alike rely heavily on Yelp to make dining decisions, making online visibility crucial for success (Appendix 1). Given the city’s growing restaurant industry and the significant influence of reviews on consumer behavior, Las Vegas provides an ideal setting to analyze what drives a restaurant’s success. This study aims to guide a theoretical client looking to open a restaurant in Las Vegas by identifying the key factors that contribute to a 5-star rating on Yelp, helping them make informed business decisions and achieve long-term success
+
+**Research Questions**
+
+-   What key factors contribute to the success and longevity of restaurants in Las Vegas based on Yelp data?
+-   How can a prospective restaurant owner optimize their business strategy to achieve a high rating and long-term viability?
+
+**Data Set Description**
+
+This report is based on the Yelp Open Dataset, a publicly available dataset provided directly by the platform itself as part of its Yelp Open Dataset initiative, designed to support academic research and analytical projects. The dataset includes information on over 150,000 businesses across various industries, including restaurants, retail, and entertainment, along with more than 6.9 million user reviews and corresponding user data. To conduct our analysis, we will utilize several key tables from the dataset, each containing different aspects of Yelp’s ecosystem. The business.csv table contains details such as name, location, category, average rating, and review count, allowing us to identify restaurant-related businesses and assess their success. The review.csv table includes user-generated reviews with star ratings and timestamps, which we use to analyze customer perception. Additionally, we engineered a longevity metric, calculated as the time between a restaurant’s first and last review, to estimate how long it has remained in operation. The checkin.csv table logs customer visits over time, providing insights into foot traffic and trends in restaurant popularity. (Appendix 2) These records will help us explore how factors like customer engagement, location, business type, and foot traffic influence Yelp's restaurant success, measured through ratings and longevity.
+**Dataset Source:** <https://business.yelp.com/data/resources/open-dataset/>
+
+# Initial Exploratory Data Analysis
+
+We begin by setting the stage with a comprehensive look at our dataset. We’ll explore the distribution and relationships between restaurant categories, ratings, and review counts to build an initial understanding of the dataset. Our goal is to identify patterns and trends that will help us analyze the factors contributing to restaurant success in Las Vegas. We measure success using two primary metrics:
+
+-   **Star ratings**: The overall ratings a restaurant received from customers, which are a key indicator of satisfaction and perceived quality.
+
+-   **Long-lasting success**: The ability of a restaurant to maintain a strong customer base and positive reputation over time, which we define as avoiding early closures (i.e., businesses that receive consistent positive reviews over a longer period and do not close soon after opening).
+
+To understand the broader restaurant ecosystem in Las Vegas, we begin by examining restaurants' overall distribution, density, and general characteristics.
+
+### Restaurant Density and Distribution
+
+```{r, echo=FALSE, include=FALSE}
+total_cities <- yelp_business %>%
+  summarise(unique_cities = n_distinct(city))
+
+print(paste("Total number of unique cities in the dataset:", total_cities$unique_cities))
+```
+
+Las Vegas is home to 7,722 restaurants spread across a bounding area of 4,040.5 km², resulting in a density of 1.91 restaurants per km². A geospatial visualization of restaurant locations reveals a high concentration of establishments in and around the Las Vegas Strip, with relatively sparse distribution in the surrounding suburban and rural areas. This clustering suggests that competition is particularly intense in central business and tourist hubs.
+
+```{r, echo=FALSE, fig.width=4, fig.height=4}
+vangogh_red <- met.brewer("VanGogh2")[1] 
+
+las_vegas_restaurants <- yelp_business %>%
+  filter(city == "Las Vegas" & grepl("Restaurant|Food", categories, ignore.case = TRUE))
+
+leaflet_map <- leaflet(las_vegas_restaurants) %>%
+  addTiles() %>% 
+  addCircleMarkers(
+    lng = ~longitude, lat = ~latitude,
+    color = vangogh_red, fillColor = vangogh_red, 
+    radius = 2, fillOpacity = 0.7, stroke = FALSE,
+    popup = ~name  
+  ) %>%
+  addLegend("bottomright", colors = vangogh_red, labels = "Restaurants", title = "Legend")
+
+htmltools::tags$div(
+  style = "width: 60%; height: 60%; margin: auto;",
+  leaflet_map
+)
+```
+
+### Popular Restaurant Types
+
+An analysis of the most common restaurant categories in Las Vegas highlights Sandwiches, Burgers, and Mexican cuisine as the most prevalent types. Other popular categories include Desserts, Ice Cream & Frozen Yogurt, Breakfast & Brunch, and Pizza. This distribution suggests a strong presence of casual dining and quick-service options, likely driven by high tourist foot traffic and demand for convenient, fast-paced eateries.
+
+```{r, include=FALSE}
+vangogh_palette <- met.brewer("VanGogh2")
+
+yelp_review <- yelp_review %>%
+  mutate(date = as.Date(date, format="%Y-%m-%d"))
+
+restaurant_lifespan <- yelp_review %>%
+  group_by(business_id) %>%
+  summarize(
+    first_review = min(date, na.rm = TRUE),
+    last_review = max(date, na.rm = TRUE),
+    lifespan_days = as.numeric(difftime(last_review, first_review, units = "days")),
+    .groups = "drop"
+  )
+
+las_vegas_restaurants <- yelp_business %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  filter(str_detect(categories, regex("\\bRestaurant\\b|\\bFood\\b", ignore_case = TRUE)))
+
+extract_main_category <- function(category_string) {
+  category_list <- unlist(strsplit(category_string, ";\\s*"))
+  food_keywords <- c("Cafe", "Bakery", "Pizza", "Sushi", "Barbecue", "BBQ", "Steakhouse",
+                     "Deli", "Bistro", "Brunch", "Vegan", "Vegetarian", "Seafood", "Desserts", 
+                     "Ice Cream", "Burger", "Sandwiches", "Breakfast", "Pasta", "Korean", 
+                     "Chinese", "Mexican", "Indian", "Italian", "French", "Thai", "Japanese", 
+                     "Greek", "Mediterranean", "American", "Asian Fusion", "Latin American")
+
+  valid_categories <- category_list[str_detect(category_list, regex(paste(food_keywords, collapse = "|"), ignore_case = TRUE))]
+
+  if (length(valid_categories) > 0) {
+    return(valid_categories[1])  
+  } else {
+    return(NA)
+  }
+}
+
+las_vegas_restaurants <- las_vegas_restaurants %>%
+  mutate(Restaurant_Type = sapply(categories, extract_main_category)) %>%
+  filter(!is.na(Restaurant_Type))  
+
+las_vegas_restaurants <- las_vegas_restaurants %>%
+  mutate(Restaurant_Type = case_when(
+    Restaurant_Type %in% c("Japanese", "Japanese Curry") ~ "Japanese",
+    Restaurant_Type %in% c("Pasta Shops", "Italian") ~ "Italian",
+    Restaurant_Type %in% c("American (Traditional)", "American (New)") ~ "American",
+    Restaurant_Type %in% c("Seafood Markets", "Seafood") ~ "Seafood",
+    TRUE ~ Restaurant_Type
+  ))
+
+las_vegas_restaurants <- las_vegas_restaurants %>%
+  inner_join(restaurant_lifespan, by = "business_id") %>%
+  filter(!is.na(lifespan_days) & lifespan_days > 0)
+
+category_longevity <- las_vegas_restaurants %>%
+  group_by(Restaurant_Type) %>%
+  summarize(
+    median_lifespan_days = median(lifespan_days, na.rm = TRUE),
+    count = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(median_lifespan_days))
+
+top_10_categories <- category_longevity %>%
+  filter(!str_detect(Restaurant_Type, regex("delivery|couriers", ignore_case = TRUE))) %>%
+  slice_max(order_by = median_lifespan_days, n = 10)
+
+filtered_restaurants <- las_vegas_restaurants %>%
+  filter(Restaurant_Type %in% top_10_categories$Restaurant_Type)
+
+top_restaurant_types <- las_vegas_restaurants %>%
+  count(Restaurant_Type, sort = TRUE) %>%
+  slice_max(n, n = 10)
+```
+
+```{r, echo=FALSE, fig.width=5, fig.height=3.5, fig.align="center"}
+if (nrow(top_restaurant_types) > 0) {
+  vangogh_palette <- met.brewer("VanGogh2")  
+  
+  top_restaurant_types <- top_restaurant_types %>%
+    mutate(row_id = row_number())  
+
+  ggplot(top_restaurant_types, aes(x = reorder(Restaurant_Type, n), y = n, fill = factor(row_id))) +
+    geom_bar(stat = "identity", color = "white") +
+    scale_fill_manual(values = rep(vangogh_palette, length.out = nrow(top_restaurant_types))) +  
+    labs(title = "Top Most Popular Restaurant Types in Las Vegas",
+         x = "", y = "Number of Businesses") +
+    coord_flip() +
+    theme_minimal() +
+    theme(legend.position = "none")  +
+    theme(
+      text = element_text(size = 7),      
+      plot.title = element_text(size = 9),
+      axis.title = element_text(size = 7),
+      axis.text = element_text(size = 7), 
+      legend.title = element_text(size = 7),
+      legend.text = element_text(size = 7)
+    )
+} else {
+  print("No valid restaurant types found after filtering.")
+}
+```
+
+```{r, echo=FALSE, include=FALSE, message=FALSE, fig.align="center"}
+if (nrow(top_restaurant_types) > 0) {
+  vangogh_palette <- met.brewer("VanGogh2")  
+
+  top_restaurant_types <- top_restaurant_types %>%
+    mutate(row_id = row_number())  
+
+  p <- ggplot(top_restaurant_types, aes(x = reorder(Restaurant_Type, n), y = n, fill = factor(row_id))) +
+    geom_bar(stat = "identity", color = "white") +
+    scale_fill_manual(values = rep(vangogh_palette, length.out = nrow(top_restaurant_types))) +  
+    labs(title = "Top 10 Most Popular Restaurant Types in Las Vegas",
+         x = "Restaurant Type", y = "Number of Businesses") +
+    coord_flip() +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    theme(
+      text = element_text(size = 7),      
+      plot.title = element_text(size = 9),
+      axis.title = element_text(size = 7),
+      axis.text = element_text(size = 7)
+    )
+
+  text_content <- str_wrap(
+    "An analysis of the most common restaurant categories in Las Vegas highlights Sandwiches, Burgers, and Mexican cuisine as the most prevalent types. Other popular categories include Desserts, Ice Cream & Frozen Yogurt, Breakfast & Brunch, and Pizza. This distribution suggests a strong presence of casual dining and quick-service options, likely driven by high tourist foot traffic and demand for convenient, fast-paced eateries.",
+    width = 45  
+  )
+
+  text_df <- data.frame(x = 1, y = 1, label = text_content)
+
+  text_plot <- ggplot(text_df, aes(x, y, label = label)) +
+    geom_text(size = 2.5, hjust = 0, vjust = 1, lineheight = 1.2) +  # Reduced text size
+    xlim(0.95, 1.5) + ylim(0, 2) +
+    theme_void()
+
+  p + text_plot + plot_layout(ncol = 2, widths = c(1.6, 1))  
+} else {
+  print("No valid restaurant types found after filtering.")
+}
+```
+
+### Distribution of Restaurant Ratings and Restaurant Longevity
+
+The distribution of restaurant ratings in Las Vegas provides insights into customer satisfaction trends. The majority of restaurants have ratings clustered between 3.5 and 4.5 stars, with fewer establishments receiving either very low (1–2 stars) or perfect (5-star) ratings. This suggests that while many restaurants maintain relatively positive reputations, achieving a flawless 5-star rating is rare. The concentration of around 4 stars also indicates that competition is high, with most businesses performing at a similar level regarding customer perception.
+
+```{r, include=FALSE, fig.width= 7, fig.height=3}
+vangogh_palette <- met.brewer("VanGogh2")
+
+unique_ratings <- length(unique(yelp_business$stars))
+extended_palette <- rep(vangogh_palette, length.out = unique_ratings) 
+
+las_vegas_ratings <- yelp_business %>%
+  filter(city == "Las Vegas" & grepl("Restaurant|Food", categories, ignore.case = TRUE))
+```
+
+```{r, echo=FALSE, fig.width= 5, fig.height=3.5, fig.align="center"}
+ggplot(las_vegas_ratings, aes(x = stars, fill = factor(stars))) +
+  geom_histogram(binwidth = 0.5, color = "white", alpha = 0.9) +
+  scale_fill_manual(values = extended_palette) + 
+  labs(title = "Distribution of Restaurant Ratings in Las Vegas",
+       x = "Star Rating", y = "Count of Restaurants", fill = "Star Rating") +
+  theme_minimal()+
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+Restaurant longevity follows a right-skewed distribution, meaning a significant portion of restaurants have relatively short lifespans, while a smaller number survive for extended periods. The median longevity, marked by the red dashed line, indicates that many restaurants struggle to sustain operations beyond a certain point. This highlights the competitive nature of the Las Vegas restaurant industry, where businesses must adapt quickly to maintain long-term success
+
+```{r, include=FALSE}
+las_vegas_lifespan <- yelp_review %>%
+  inner_join(las_vegas_restaurants %>% filter(city == "Las Vegas"), by = "business_id") %>%
+  group_by(business_id) %>%
+  summarize(
+    first_review = min(as.Date(date, format="%Y-%m-%d"), na.rm = TRUE),
+    last_review = max(as.Date(date, format="%Y-%m-%d"), na.rm = TRUE),
+    lifespan_days = as.numeric(difftime(last_review, first_review, units = "days")),
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(lifespan_days) & lifespan_days > 0)
+```
+
+```{r, echo=FALSE, fig.width=5, fig.height=3.5, fig.align="center"}
+ggplot(las_vegas_lifespan, aes(x = lifespan_days)) +
+  geom_density(fill = vangogh_palette[5], alpha = 0.4) +  
+  geom_vline(aes(xintercept = median(lifespan_days, na.rm = TRUE)), 
+             linetype = "dashed", color = vangogh_palette[1], size = 1) +  
+  labs(
+    title = "Restaurant Longevity Distribution in Las Vegas",
+    x = "Longevity (Days)",
+    y = "Density",
+    subtitle = "Dashed line represents the median lifespan"
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+### Review Activity
+
+Review activity on Yelp has increased significantly over time, with a clear upward trend in the number of reviews per month, particularly from 2010 onward. The heatmap highlights peak review activity in more recent years, with 2017 showing the highest volume. This growth reflects both the increasing reliance on online reviews and the expansion of Yelp’s user base. The seasonality of reviews appears relatively stable, with no extreme fluctuations across months, suggesting that customers engage with Yelp consistently throughout the year.
+
+Additionally, our analysis (Appendix 4) reveals a positive correlation between the number of reviews and a restaurant’s rating, indicating that higher-rated restaurants tend to receive more reviews. This suggests that businesses with strong reputations not only attract more customers but also encourage greater online engagement.
+
+```{r, echo=FALSE, warning=FALSE, fig.align="center", out.width="50%"}
+yelp_review$year <- year(yelp_review$date)
+yelp_review$month <- month(yelp_review$date, label = TRUE)
+
+review_counts <- yelp_review %>%
+  group_by(year, month) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  filter(year > 2004)  # Exclude 2004
+
+vangogh_palette <- rev(met.brewer("VanGogh2")[1:5])  
+
+ggplot(review_counts, aes(x = month, y = factor(year, levels = sort(unique(review_counts$year))), fill = count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradientn(colors = vangogh_palette) +
+  labs(title = "Review Activity Over Time",
+       x = "Month", y = "Year", fill = "Number of Reviews") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+These initial findings in our exploration set the foundation for further investigation into the factors that influence high ratings and restaurant longevity. Moving forward, we will analyze how restaurant type, location, competition, and intrinsic properties (such as operating hours and review sentiment) contribute to a restaurant’s success on Yelp.
+
+# In-Depth Analysis: What factors influence star ratings?
+
+Having established the overall distribution of ratings and restaurant longevity, we now shift our focus to identifying the key factors that contribute to a high star rating and long-term success. Our objective is to provide actionable recommendations for a prospective restaurant owner, guiding them in choosing the right business type, optimal location, and essential attributes to maximize their chances of success on Yelp.
+
+## Part 1: Choosing the Right Restaurant Type for Long-Term Success
+
+Choosing the right restaurant type is crucial for long-term success and our objective. To make an informed decision, we again focus on two key factors: customer ratings and business longevity. A high-rated restaurant attracts more customers, while a long lifespan indicates market stability. Our analysis highlights three promising categories: French, Thai, and Breakfast & Brunch.
+
+```{r, include=FALSE, fig.width=10, fig.height=5}
+las_vegas_restaurants <- las_vegas_restaurants %>%
+  mutate(Restaurant_Type = case_when(
+    Restaurant_Type %in% c("Japanese", "Japanese Curry") ~ "Japanese",
+    Restaurant_Type %in% c("Pasta Shops", "Italian") ~ "Italian",
+    Restaurant_Type %in% c("American (Traditional)", "American (New)") ~ "American",
+    Restaurant_Type %in% c("Seafood Markets", "Seafood") ~ "Seafood",
+    TRUE ~ Restaurant_Type 
+  ))
+
+category_star_rating <- las_vegas_restaurants %>%
+  group_by(Restaurant_Type) %>%
+  summarize(
+    median_stars = median(stars, na.rm = TRUE),  
+    count = n(),  
+    .groups = "drop"
+  ) %>%
+  arrange(desc(median_stars))  
+
+top_10_rated_categories <- category_star_rating %>%
+  filter(!str_detect(Restaurant_Type, regex("delivery|couriers", ignore_case = TRUE))) %>%  
+  slice_max(order_by = median_stars, n = 10)  
+
+filtered_restaurants <- las_vegas_restaurants %>%
+  filter(Restaurant_Type %in% top_10_rated_categories$Restaurant_Type)
+```
+
+```{r, echo=FALSE, fig.width=6, fig.height=4, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+if (nrow(filtered_restaurants) > 0) {
+  
+  ordered_categories <- filtered_restaurants %>%
+    group_by(Restaurant_Type) %>%
+    summarize(median_stars = median(stars)) %>%
+    arrange(desc(median_stars)) %>%
+    mutate(row_id = row_number())  
+
+  num_categories <- nrow(ordered_categories)
+  adjusted_colors <- rep(vangogh_palette, length.out = num_categories) 
+  
+  ordered_categories <- ordered_categories %>%
+    mutate(Fill_Color = adjusted_colors[(row_id %% length(vangogh_palette)) + 1]) 
+
+  filtered_restaurants <- filtered_restaurants %>%
+    left_join(ordered_categories, by = "Restaurant_Type")
+
+  ggplot(filtered_restaurants, aes(x = reorder(Restaurant_Type, stars, FUN = median), 
+                                   y = stars, fill = Fill_Color)) +
+    geom_boxplot(outlier.shape = NA, alpha = 0.8) +  
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black", size = 0.5) + 
+    scale_fill_identity() +  
+    coord_flip() +
+    labs(
+      title = "Distribution of Star Ratings for Top 15 Highest-Rated Food Categories",
+      x = "Food Category",
+      y = "Star Rating"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "none")  +
+    theme(
+      text = element_text(size = 7),      
+      plot.title = element_text(size = 9),
+      axis.title = element_text(size = 7),
+      axis.text = element_text(size = 7), 
+      legend.title = element_text(size = 7),
+      legend.text = element_text(size = 7)
+    )
+} else {
+  print("No valid restaurant types found after filtering.")
+}
+```
+
+French and Thai restaurants rank among the highest-rated categories, with median ratings close to 4.5 stars and relatively low variability, indicating strong customer satisfaction. Breakfast & Brunch also maintains a solid reputation with a median rating of 4 stars, though with slightly more variability, suggesting a mix of experiences. While this category faces more competition than French and Thai cuisine, it still has far less competition compared to the fast-food segment, making it a strong and viable option
+
+```{r, include=FALSE, fig.width=20}
+yelp_review <- yelp_review %>%
+  mutate(date = as.Date(date, format="%Y-%m-%d"))
+
+restaurant_lifespan <- yelp_review %>%
+  group_by(business_id) %>%
+  summarize(
+    first_review = min(date, na.rm = TRUE),
+    last_review = max(date, na.rm = TRUE),
+    lifespan_days = as.numeric(difftime(last_review, first_review, units = "days")),
+    .groups = "drop"
+  )
+
+las_vegas_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  filter(str_detect(categories, regex("\\bRestaurant\\b|\\bFood\\b", ignore_case = TRUE)))
+
+extract_main_category <- function(category_string) {
+  category_list <- unlist(strsplit(category_string, ";\\s*"))
+  food_keywords <- c("Cafe", "Bakery", "Pizza", "Sushi", "Barbecue", "BBQ", "Steakhouse",
+                     "Deli", "Bistro", "Brunch", "Vegan", "Vegetarian", "Seafood", "Desserts", 
+                     "Ice Cream", "Burger", "Sandwiches", "Breakfast", "Pasta", "Korean", 
+                     "Chinese", "Mexican", "Indian", "Italian", "French", "Thai", "Japanese", 
+                     "Greek", "Mediterranean", "American", "Asian Fusion", "Latin American")
+
+  valid_categories <- category_list[str_detect(category_list, regex(paste(food_keywords, collapse = "|"), ignore_case = TRUE))]
+  
+  if (length(valid_categories) > 0) {
+    return(valid_categories[1]) 
+  } else {
+    return(NA)
+  }
+}
+
+las_vegas_restaurants <- las_vegas_restaurants %>%
+  mutate(Restaurant_Type = sapply(categories, extract_main_category)) %>%
+  filter(!is.na(Restaurant_Type)) 
+
+category_longevity <- las_vegas_restaurants %>%
+  group_by(Restaurant_Type) %>%
+  summarize(
+    median_lifespan_days = median(lifespan_days, na.rm = TRUE),
+    count = n(),  
+    .groups = "drop"
+  ) %>%
+  arrange(desc(median_lifespan_days))
+
+top_10_categories <- category_longevity %>%
+  slice_max(median_lifespan_days, n = 15) 
+
+filtered_restaurants <- las_vegas_restaurants %>%
+  filter(Restaurant_Type %in% top_10_categories$Restaurant_Type)
+
+yelp_review <- yelp_review %>%
+  mutate(date = as.Date(date, format="%Y-%m-%d"))
+
+las_vegas_restaurants <- las_vegas_restaurants %>%
+  mutate(Restaurant_Type = case_when(
+    Restaurant_Type %in% c("Japanese", "Japanese Curry") ~ "Japanese",
+    Restaurant_Type %in% c("Pasta Shops", "Italian") ~ "Italian",
+    Restaurant_Type %in% c("American (Traditional)", "American (New)") ~ "American",
+    Restaurant_Type %in% c("Seafood Markets", "Seafood") ~ "Seafood",
+    TRUE ~ Restaurant_Type
+  ))
+
+category_longevity <- las_vegas_restaurants %>%
+  group_by(Restaurant_Type) %>%
+  summarize(
+    median_lifespan_days = median(lifespan_days, na.rm = TRUE),
+    count = n(),  
+    .groups = "drop"
+  ) %>%
+  arrange(desc(median_lifespan_days))
+
+top_10_categories <- category_longevity %>%
+  filter(!str_detect(Restaurant_Type, regex("delivery|couriers", ignore_case = TRUE))) %>%  
+  slice_max(order_by = median_lifespan_days, n = 15)  
+
+filtered_restaurants <- las_vegas_restaurants %>%
+  filter(Restaurant_Type %in% top_10_categories$Restaurant_Type)
+```
+
+```{r, echo=FALSE, fig.width=6, fig.height=4, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+if (nrow(filtered_restaurants) > 0) {
+  
+  ordered_categories <- filtered_restaurants %>%
+    group_by(Restaurant_Type) %>%
+    summarize(median_lifespan = median(lifespan_days)) %>%
+    arrange(desc(median_lifespan)) %>%
+    mutate(row_id = row_number())  
+
+  num_categories <- nrow(ordered_categories)
+  adjusted_colors <- rep(vangogh_palette, length.out = num_categories)  
+  
+  ordered_categories <- ordered_categories %>%
+    mutate(color = adjusted_colors[(row_id %% length(vangogh_palette)) + 1])
+
+  filtered_restaurants <- filtered_restaurants %>%
+    left_join(dplyr::select(ordered_categories, Restaurant_Type, color), by = "Restaurant_Type")
+
+  ggplot(filtered_restaurants, aes(x = reorder(Restaurant_Type, lifespan_days, FUN = median), 
+                                   y = lifespan_days, fill = color)) +
+    geom_boxplot(outlier.shape = NA, alpha = 0.8) +  
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black", size = 0.5) +  
+    scale_fill_identity() + 
+    coord_flip() +
+    labs(
+      title = "Top Longest-Living Food Categories in Las Vegas",
+      x = "Food Category",
+      y = "Longevity (Days)"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "none")  +
+    theme(
+      text = element_text(size = 7),      
+      plot.title = element_text(size = 9),
+      axis.title = element_text(size = 7),
+      axis.text = element_text(size = 7), 
+      legend.title = element_text(size = 7),
+      legend.text = element_text(size = 7)
+    )
+} else {
+  print("No valid restaurant types found after filtering.")
+}
+
+
+```
+
+Beyond ratings, longevity is essential—French and Breakfast & Brunch restaurants rank among the longest-living categories, showing strong market stability. French cuisine benefits from a loyal, high-spending customer base, while Breakfast & Brunch restaurants attract repeat customers and steady daily foot traffic. Thai restaurants, while slightly behind in lifespan, maintain a consistent presence over time, reflecting sustained consumer interest.
+
+While these factors highlight three strong restaurant types, choosing between them requires a deeper look at market trends and growth opportunities. It is important to identify which category is experiencing increasing demand, ensuring a future-proof investment. By analyzing review growth over time, we can assess whether consumer interest in a category is expanding, stabilizing, or declining.
+
+```{r, include=FALSE}
+selected_categories <- c("French", "Thai", "Breakfast & Brunch")
+
+vegas_selected_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  mutate(category_list = str_split(categories, ";\\s*")) %>%  
+  unnest(category_list) %>%  
+  filter(category_list %in% selected_categories) %>%
+  dplyr::select(business_id, category_list)
+
+vegas_reviews <- yelp_review %>%
+  filter(business_id %in% vegas_selected_restaurants$business_id) %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d")) %>%
+  left_join(vegas_selected_restaurants, by = "business_id") %>%
+  drop_na(date) 
+print("Summary of reviews by category:")
+print(vegas_reviews %>% count(category_list, sort = TRUE))
+
+vegas_reviews_summary <- vegas_reviews %>%
+  count(category_list, sort = TRUE)
+```
+
+```{r, include=FALSE, fig.align="center"}
+kable(vegas_reviews_summary, caption = "Summary of Reviews by Category")
+```
+
+```{r, include=FALSE}
+review_trend <- vegas_reviews %>%
+  group_by(date, category_list) %>%
+  summarise(total_reviews = n(), .groups = "drop") %>%
+  arrange(date) %>%
+  group_by(category_list) %>%
+  mutate(cumulative_reviews = cumsum(total_reviews))  
+
+if (nrow(review_trend) == 0) {
+  stop("No review data found for selected categories!")
+}
+```
+
+```{r, include=FALSE, fig.width=5}
+vegas_selected_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  mutate(category_list = str_split(categories, ";\\s*")) %>%  
+  unnest(category_list) %>%  
+  filter(category_list %in% selected_categories) %>%
+  dplyr::select(business_id, category_list)
+
+restaurant_first_appearance <- yelp_review %>%
+  filter(business_id %in% vegas_selected_restaurants$business_id) %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d")) %>%
+  left_join(vegas_selected_restaurants, by = "business_id") %>%
+  drop_na(date) %>%
+  group_by(business_id, category_list) %>%
+  summarise(first_review_date = min(date), .groups = "drop")  
+
+restaurant_trend <- restaurant_first_appearance %>%
+  group_by(first_review_date, category_list) %>%
+  summarise(new_restaurants = n(), .groups = "drop") %>%
+  arrange(first_review_date) %>%
+  group_by(category_list) %>%
+  mutate(cumulative_restaurants = cumsum(new_restaurants))  
+
+if (nrow(restaurant_trend) == 0) {
+  stop("No restaurant data found for selected categories!")
+}
+```
+
+```{r, echo=FALSE, fig.width=10, fig.height=5, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+selected_colors <- c(vangogh_palette[1], vangogh_palette[4], vangogh_palette[8])  
+
+unique_categories <- unique(review_trend$category_list)
+if (length(unique_categories) > 3) {
+  selected_categories <- unique_categories[1:3]  
+} else {
+  selected_categories <- unique_categories
+}
+
+p1 <- ggplot(review_trend %>% filter(category_list %in% selected_categories), 
+             aes(x = date, y = cumulative_reviews, color = category_list)) +
+  geom_line(size = 1) +
+  scale_color_manual(values = selected_colors) +  
+  labs(title = "Review Growth Over Time in Las Vegas",
+       x = "Date",
+       y = "Cumulative Review Count",
+       color = "Restaurant Type") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+
+p2 <- ggplot(restaurant_trend %>% filter(category_list %in% selected_categories), 
+             aes(x = first_review_date, y = cumulative_restaurants, color = category_list)) +
+  geom_line(size = 1) +
+  scale_color_manual(values = selected_colors) +  # Apply selected colors
+  labs(title = "Growth of Restaurants Over Time in Las Vegas",
+       x = "Date",
+       y = "Cumulative Number of Restaurants",
+       color = "Restaurant Type") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+
+p1 + p2 + plot_layout(ncol = 2)
+```
+
+Breakfast & Brunch stands out with the fastest-growing review count, far surpassing French and Thai cuisine. This trend suggests a rising demand for brunch experiences, likely driven by social dining culture, digital engagement, and Las Vegas’s strong tourism market. While this data is not normalized for the number of businesses, the sharp increase in engagement reinforces Breakfast & Brunch as an emerging market opportunity.
+
+Additionally, it is interesting to note that these high-performing categories are not among the most common restaurant types in Las Vegas. A previous visualization (not included here) showed that the most popular restaurant types in the city consist largely of casual dining and fast-food options, such as sandwiches, burgers, and desserts. By focusing on a less saturated but highly rated and long-lasting category, we position ourselves in a segment with strong demand and growth potential rather than one dominated by intense competition.
+
+Considering its high ratings, strong longevity, and rapid market growth, we recommend opening a Breakfast & Brunch restaurant. This category benefits from steady demand, broad customer appeal, and frequent visits, making it a strategic choice for a sustainable and profitable restaurant in Las Vegas. The next sections will explore location, competition, and key attributes to ensure its success.
+
+## Part 2: Restaurant Location and Its Impact on Ratings
+
+Understanding the current distribution of Breakfast & Brunch restaurants across Las Vegas is crucial in selecting an optimal location for a new venture.
+
+```{r, include=FALSE}
+vangogh_palette <- met.brewer("VanGogh2")
+
+business_data <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas", !is.na(neighborhood), neighborhood != "") %>% 
+  count(neighborhood, sort = TRUE) %>%
+  top_n(20) %>%
+  arrange(desc(n)) %>% 
+  mutate(row_id = row_number()) 
+
+adjusted_colors <- vangogh_palette[rep(seq_along(vangogh_palette), length.out = nrow(business_data))]
+
+business_data <- business_data %>%
+  mutate(Fill_Color = adjusted_colors[row_id])
+
+business_plot <- ggplot(business_data, aes(x = reorder(neighborhood, n), y = n, fill = Fill_Color)) +
+  geom_bar(stat = "identity", color = "white") +  
+  scale_fill_identity() +  
+  coord_flip() +
+  labs(
+    title = "Top 20 Neighborhoods by Number of Businesses in Las Vegas",
+    x = "Neighborhood",
+    y = "Number of Businesses"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",  
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+
+business_plot
+```
+
+```{r, echo=FALSE, fig.align="center", out.width="70%"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+business_data <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas", !is.na(neighborhood), neighborhood != "") %>%  
+  count(neighborhood, sort = TRUE) %>%
+  top_n(20) %>%
+  arrange(desc(n)) %>%  
+  mutate(row_id = row_number())  
+
+adjusted_colors <- vangogh_palette[rep(seq_along(vangogh_palette), length.out = nrow(business_data))]
+
+business_data <- business_data %>%
+  mutate(Fill_Color = adjusted_colors[row_id])
+
+business_plot <- ggplot(business_data, aes(x = reorder(neighborhood, n), y = n, fill = Fill_Color)) +
+  geom_bar(stat = "identity", color = "white") + 
+  scale_fill_identity() +  
+  coord_flip() +
+  labs(
+    title = "Top 20 Neighborhoods for Breakfast and Brunch Restaurants in Las Vegas",
+    x = "Neighborhood",
+    y = "Number of Businesses"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",  
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+
+business_plot
+```
+
+This first visualization presents the top 20 neighborhoods with the highest number of brunch establishments. The most restaurant-dense areas are The Strip, Spring Valley, Westside, Downtown, and Southeast, each shaped by unique market conditions. Naturally, the Strip tops the list because it is the city's main tourist destination, drawing millions of tourists who raise the demand for dining options in the area. It is a popular location for brunch eateries because of the large hotels, casinos, and entertainment venues that are located there. Spring Valley follows closely behind, known for its suburban appeal and commercial districts that cater to both residents and visitors. Its diverse restaurant scene benefits from steady local foot traffic as well as spillover from The Strip. Contrarily, Westside has a more residential-commercial mix, with a wide range of eateries supported by a robust local clientele. This neighborhood's numerous businesses are a result of its weekend brunch culture and recurring clientele. Other high-density areas that exhibit the growth of suburban sprawl are Downtown and the Southeast, areas where the growing population increases demand for local dining options outside the core tourist areas.
+
+```{r, include=FALSE}
+brunch_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>% 
+  filter(
+    str_detect(categories, regex("\\Breakfast & Brunch\\b", ignore_case = TRUE)) &  
+    str_detect(categories, regex("\\bRestaurant\\b|\\bFood\\b", ignore_case = TRUE)) 
+  )
+
+vegas_restaurants <- brunch_restaurants %>%
+  filter(
+    city == "Las Vegas",
+    str_detect(categories, regex("Food|Restaurant|Cafe|Bar|Bakery|Eatery", ignore_case = TRUE))
+  ) %>%
+  mutate(
+    star_rating = as.numeric(stars),
+    review_count = as.numeric(review_count)
+  ) %>%
+  filter(!is.na(latitude), !is.na(longitude), !is.na(star_rating), !is.na(review_count))
+
+
+all_vegas_restaurants <- las_vegas_restaurants %>%
+  filter(
+    city == "Las Vegas",
+    str_detect(categories, regex("Food|Restaurant|Cafe|Bar|Bakery|Eatery", ignore_case = TRUE))
+  ) %>%
+  mutate(
+    star_rating = as.numeric(stars),
+    review_count = as.numeric(review_count)
+  ) %>%
+  filter(!is.na(latitude), !is.na(longitude), !is.na(star_rating), !is.na(review_count))
+
+rating_palette <- colorNumeric(palette = "YlOrRd", domain = vegas_restaurants$star_rating)
+
+#just brunch
+brunch_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>% 
+  filter(
+    str_detect(categories, regex("\\Breakfast & Brunch\\b", ignore_case = TRUE)) &  
+    str_detect(categories, regex("\\bRestaurant\\b|\\bFood\\b", ignore_case = TRUE)) 
+  )
+
+vegas_restaurants <- brunch_restaurants %>%
+  filter(
+    city == "Las Vegas",
+    str_detect(categories, regex("Food|Restaurant|Cafe|Bar|Bakery|Eatery", ignore_case = TRUE))
+  ) %>%
+  mutate(
+    star_rating = as.numeric(stars),
+    review_count = as.numeric(review_count)
+  ) %>%
+  filter(!is.na(latitude), !is.na(longitude), !is.na(star_rating), !is.na(review_count))
+
+rating_palette <- colorNumeric(palette = "YlOrRd", domain = vegas_restaurants$star_rating)
+vangogh_red <- met.brewer("VanGogh2")[1]  
+```
+
+```{r, echo=FALSE, fig.width=5, fig.height=5, fig.align="center"}
+rating_palette <- colorNumeric(palette = "YlOrRd", domain = vegas_restaurants$star_rating)
+
+map1 <- leaflet(all_vegas_restaurants) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addCircles(
+    lng = ~longitude, lat = ~latitude,
+    color = ~rating_palette(star_rating),
+    opacity = 0.7, fillOpacity = 0.6, radius = ~sqrt(review_count) * 10,
+    popup = ~paste(
+      "<strong>", name, "</strong><br>",
+      "Category: ", categories, "<br>",
+      "Rating: ", star_rating, "<br>",
+      "Reviews: ", review_count
+    )
+  ) %>%
+  addLegend(
+    pal = rating_palette, values = vegas_restaurants$star_rating,
+    title = "Star Rating",
+    position = "bottomright"
+  )
+
+map2 <- leaflet(vegas_restaurants) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addCircles(
+    lng = ~longitude, lat = ~latitude,
+    color = ~rating_palette(star_rating),
+    opacity = 0.7, fillOpacity = 0.6, radius = ~sqrt(review_count) * 10,
+    popup = ~paste(
+      "<strong>", name, "</strong><br>",
+      "Category: ", categories, "<br>",
+      "Rating: ", star_rating, "<br>",
+      "Reviews: ", review_count
+    )
+  ) %>%
+  addLegend(
+    pal = rating_palette, values = vegas_restaurants$star_rating,
+    title = "Star Rating",
+    position = "bottomright"
+  )
+
+tagList(
+  
+  div(
+    style = "display: flex; justify-content: space-between; width: 100%; text-align: center; 
+             margin-bottom: 15px; font-size: 15px; color: black;",
+    div(style = "width: 49%;", tags$h3("Restaurants in Las Vegas")),
+    div(style = "width: 49%;", tags$h3("Breakfast and Brunch Places in Las Vegas"))
+  ),
+  
+  div(
+    style = "display: flex; justify-content: space-between; align-items: flex-start; width: 100%;",
+    
+    div(
+      style = "width: 49%;",
+      map1
+    ),
+    
+    div(
+      style = "width: 49%;",
+      map2
+    )
+  )
+)
+```
+
+This heatmap again highlights The Strip and Downtown as major hotspots, where we can observe a very high concentration of brunch restaurants with varying ratings. While these areas naturally attract significant foot traffic, they also face very intense competition, suggesting it is not the best area to open our venture. Moving outward, we notice clusters in suburban regions like Summerlin, Southwest, and Henderson, where brunch spots are more spread out, potentially offering opportunities in areas with lower market saturation. These areas are interesting as they are strategically positioned near expanding residential and commercial areas, suggesting the potential for capturing a loyal customer base with less direct competition.
+
+```{r, include=FALSE}
+french_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  filter(
+    str_detect(categories, regex("\\Breakfast & Brunch\\b", ignore_case = TRUE)) & 
+    str_detect(categories, regex("\\bRestaurant\\b|\\bFood\\b", ignore_case = TRUE))  
+  ) %>%
+  dplyr::select(name, latitude, longitude, stars)  
+
+french_highly_rated <- french_restaurants %>%
+  filter(stars >= 4)
+```
+
+```{r, echo=FALSE, fig.width= 7, fig.height=4, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+ggplot() +
+  stat_density_2d(data = french_highly_rated, aes(x = longitude, y = latitude, fill = ..level..), 
+                  geom = "polygon", alpha = 0.5) +
+  scale_fill_gradientn(colors = vangogh_palette[5:8], name = "Density of 4.0+ Rated French Restaurants") +
+
+  geom_point(data = french_restaurants, aes(x = longitude, y = latitude, color = stars), size = 2) +
+  scale_color_gradientn(colors = vangogh_palette[1:4], name = "Stars") + 
+  
+  labs(title = "Breakfast & Brunch Restaurant Distribution in Las Vegas",
+       subtitle = "Density of Highly Rated French Restaurants (4.0+ Stars)",
+       x = "Longitude", y = "Latitude") +
+  
+  theme_minimal() +
+  theme(legend.position = "right") +
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+The visualization above represents the distribution of highly rated (4.0+ stars) breakfast and brunch restaurants in Las Vegas, focusing on Breakfast & Brunch restaurants, The density plot highlights clusters of these restaurants, with yellow regions indicating a higher concentration of well-rated establishments, while yellow-to-red points show individual restaurants, color-coded by their star ratings. The map reveals that highly rated Breakfast & Brunch spots tend to cluster in specific areas, suggesting potential hotspots for restaurant success.
+
+To refine our site selection further, we leverage a predictive model that analyzes key location factors, including customer ratings, review counts, and neighborhood dynamics, to estimate business longevity. This model will help us identify the best area to open Brunch&Breakfast venture.
+
+```{r, include=FALSE, fig.width=10}
+yelp_reviews <- yelp_review %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d"))
+
+business_review_dates <- yelp_reviews %>%
+  group_by(business_id) %>%
+  summarize(
+    first_review = min(date, na.rm = TRUE),
+    last_review = max(date, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+yelp_restaurants_brunch <- brunch_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  filter(str_detect(categories, regex("\\b(Restaurant|Food)\\b", ignore_case = TRUE))) %>%
+  dplyr::select(business_id, stars, review_count, latitude, longitude, is_open, neighborhood) %>%
+  left_join(business_review_dates, by = "business_id") %>%
+  mutate(
+    days_open = as.numeric(difftime(last_review, first_review, units = "days")),
+    log_review_count = log1p(review_count),  
+    neighborhood = as.factor(neighborhood)
+  ) %>%
+  drop_na(days_open) 
+
+summary(yelp_restaurants_brunch$days_open)
+
+yelp_restaurants_brunch <- yelp_restaurants_brunch %>%
+  mutate(star_category = case_when(
+    stars <= 2.5 ~ "Low",
+    stars >= 4 ~ "High",
+    TRUE ~ "Mid"
+  ))
+
+set.seed(123)
+balanced_data <- yelp_restaurants_brunch %>%
+  group_by(star_category) %>%
+  sample_n(size = min(table(yelp_restaurants_brunch$star_category)), replace = TRUE) %>%
+  ungroup()
+
+table(balanced_data$star_category)
+
+smooth_model <- gam(
+  log1p(days_open) ~ s(stars, k=5) + s(log_review_count, k=10) + neighborhood + star_category, 
+  data = balanced_data
+)
+
+prediction_grid <- expand.grid(
+  stars = seq(min(balanced_data$stars), max(balanced_data$stars), length.out = 100),
+  review_count = seq(1, quantile(balanced_data$review_count, 0.95), length.out = 100),
+  neighborhood = unique(balanced_data$neighborhood),
+  star_category = unique(balanced_data$star_category)
+)
+
+prediction_grid$log_review_count <- log1p(prediction_grid$review_count)
+
+prediction_grid$predicted_days_open <- expm1(predict(smooth_model, newdata = prediction_grid))
+```
+
+```{r, echo=FALSE, fig.width= 10, fig.height=5, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+ggplot(prediction_grid, aes(x = stars, y = review_count, fill = predicted_days_open)) +
+  geom_tile() +
+  facet_wrap(~ neighborhood, scales = "free") +
+  
+  scale_fill_gradientn(colors = vangogh_palette[1:5], name = "Predicted Days Open") +
+  
+  labs(
+    title = "Predicted Business Longevity by Ratings, Reviews, and Neighborhood for Brunch Places",
+    x = "Star Rating",
+    y = "Review Count"
+  ) +
+  
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 6, face = "bold"),  
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right",
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+This analysis examines the key factors influencing the long-term success of a brunch restaurant in Las Vegas, with a focus on star ratings, customer reviews, and neighborhood characteristics. Using a Generalized Additive Model (GAM), the study captures non-linear relationships between these variables, providing a flexible predictive framework for business longevity. The findings indicate that higher ratings and a greater number of customer reviews are strongly correlated with extended business survival, though the impact varies depending on the neighborhood.
+
+The Eastside, Southeast, and Southwest neighborhoods emerge as particularly favorable locations for a brunch restaurant, as businesses with high ratings in these areas tend to remain operational for longer periods. In contrast, the Northwest, Chinatown, and University districts appear more challenging, requiring additional marketing and customer engagement efforts to sustain success. This suggests that location selection plays a crucial role in determining business longevity and should be carefully considered.
+
+Compared to the overall restaurant market in Las Vegas, where The Strip and Downtown typically show the strongest longevity, brunch spots exhibit a different pattern. As shown in Appendix Figure 1, brunch restaurants tend to thrive more in Eastside, Southeast, and Southwest, suggesting a shift in customer engagement dynamics for this niche. Unlike the general trend where tourist-heavy areas dominate restaurant longevity, brunch businesses appear to rely more on sustained local engagement and consistently high ratings rather than foot traffic alone. This highlights the unique characteristics of the brunch market and the importance of catering to a loyal local customer base.
+
+The model underscores the critical role of early reputation building, as customer engagement through positive reviews significantly enhances long-term viability. In high-engagement neighborhoods such as Eastside, Southeast, and Southwest, businesses can capitalize on organic customer feedback to drive sustained success. However, in more competitive or low-engagement areas, a more differentiated strategy—such as targeted marketing, unique offerings, or strategic partnerships—may be necessary to attract and retain customers.
+
+While neighborhood selection, customer engagement, and strong ratings lay the foundation for long-term success, they alone are not sufficient. The next crucial step is to identify the specific business attributes that further enhance restaurant longevity and profitability. To develop a comprehensive strategy for maximizing success, we now turn our focus to the operational factors that contribute to sustained viability. By examining aspects such as operating hours, menu diversity, and customer sentiment, we aim to uncover actionable insights that can help a brunch restaurant optimize its business model for long-term sustainability in the chosen location.
+
+## Part 3: Insights from Customer Reviews – Key Drivers of Success
+
+To understand what makes a brunch restaurant successful, we conducted an in-depth analysis of customer reviews, focusing on the most frequent words and phrases in both high-rated (5-star) and low-rated (1-star) reviews. This approach allows us to pinpoint what customers value most, as well as common pitfalls that lead to dissatisfaction
+
+```{r, echo=FALSE, fig.align="center", out.width="70%"}
+set.seed(123)
+reviews <- yelp_review %>% sample_n(100000)
+reviews <- reviews %>% dplyr::select(review_id, stars, text)
+bigrams_15 <- reviews %>%
+  filter(stars %in% c(1, 5)) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word,
+         !str_detect(word1, "^[0-9]+$"),
+         !str_detect(word2, "^[0-9]+$")) %>%
+  unite("bigram", word1, word2, sep = " ") %>%
+  count(stars, bigram, sort = TRUE) %>%
+  filter(n > 100)
+
+top_bigrams <- bigrams_15 %>%
+  group_by(stars) %>%
+  slice_max(n, n = 30) %>%
+  ungroup()
+
+ggplot(top_bigrams, aes(x = reorder_within(bigram, n, stars), y = n, fill = factor(stars))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~stars, scales = "free_y") +
+  coord_flip() +
+  scale_x_reordered() +
+  scale_fill_manual(values = c("1" = vangogh_palette[1], "5" = vangogh_palette[5])) +
+  labs(
+    title = "Top Bigrams in 1-Star vs 5-Star Reviews",
+    x = "Bigram", 
+    y = "Frequency"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+  )
+```
+
+### Food Quality: The Cornerstone of a Memorable Experience
+
+An in-depth analysis of the word cloud and the frequency of terms in both high-rated and low-rated reviews reveals that several critical factors contribute to a restaurant’s success. The review data clearly shows that food quality remains the cornerstone of a memorable dining experience. Numerous positive reviews include phrases such as “amazing food” and “great service”, which indicate that customers place a high value on not only the flavor and presentation of the dishes but also the overall dining experience. The recurring use of these expressions suggests that diners are attracted to establishments where the culinary standards are consistently high. The word cloud analysis reinforces this, with dominant terms like "food," "taste," "menu," and "flavor" appearing frequently. Conversely, negative reviews often feature expressions like “cold food” and “terrible food”, highlighting that even minor lapses in food preparation or serving temperature can quickly lead to customer dissatisfaction. These observations underline the necessity for a restaurant to maintain strict quality control throughout the kitchen and service processes, ensuring that every dish meets the established high standards expected by its clientele.
+
+```{r, echo=FALSE, fig.align="center", out.width="60%"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+reviews_cloud <- yelp_review %>% sample_n(1000000)
+reviews_cloud <- reviews_cloud %>% dplyr::select(review_id, stars, text)
+
+reviews_clean <- reviews_cloud %>%
+  dplyr::select(review_id, text) %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "\\d"))
+
+word_counts <- reviews_clean %>%
+  count(word, sort = TRUE)
+
+high_freq_words <- word_counts %>%
+  filter(n >= 50000)
+
+wordcloud(
+  words = high_freq_words$word, 
+  freq = high_freq_words$n,
+  max.words = 100,                
+  random.order = FALSE,
+  colors = rep(vangogh_palette, length.out = nrow(high_freq_words)) 
+)
+
+```
+
+### Service and Customer Experience: A Make-or-Break Factor
+
+Equally significant in determining a restaurant’s success is the quality of service and the efficiency of its operational procedures. Many high-rated reviews emphasize the role of a welcoming and professional team by frequently mentioning “friendly staff”, which suggests that a courteous and attentive service environment is essential for enhancing the overall dining experience. In contrast, negative reviews often refer to issues such as “long wait” and “rude staff”, indicating that delays in service and unprofessional interactions can have a profoundly negative impact on customer satisfaction.
+
+### Value for Money: A Key Driver of Customer Satisfaction
+
+Finally, we observe that pricing and perceived value play a significant role in customer satisfaction, directly influencing whether a brunch restaurant secures positive reviews and repeat business. The bigram analysis reveals that “reasonable price” appears frequently in 5-star reviews, indicating that customers appreciate fair pricing concerning the quality of food and service. The repeated mention of “overpriced” in lower-rated reviews further emphasizes that customers are highly sensitive to the perceived value of their meal. Additionally, phrases like "credit card" and "front desk" suggest that payment inefficiencies or poor first impressions can also detract from the overall experience.
+
+Taken together, these insights highlight that a successful brunch restaurant must consistently deliver high-quality food, provide friendly and efficient service, and maintain fair and transparent pricing. Ensuring that these elements align with customer expectations is essential for building strong loyalty, securing positive reviews, and achieving long-term success in a competitive market.
+
+### Final Model: Reducing Closure Risk Through Yelp and Online Presence
+
+This final predictive model analyzes the relationship between star ratings, review count, and business survival to estimate the probability of closure. It shows that businesses with lower review counts and moderate ratings (around 3-4 stars) are at the highest risk of shutting down, while those with higher ratings and a substantial number of reviews are significantly more likely to remain operational. This underscores a crucial reality: a restaurant’s success isn’t just about great food, it’s about visibility, reputation, and customer interaction.To reduce closure risk, our brunch restaurant must implement a strong Yelp strategy to consistently generate high volumes of positive reviews.
+
+Simple actions such as encouraging satisfied customers to leave feedback, displaying QR codes linking to the review page, and offering small incentives like a free coffee for reviews can help increase engagement. Additionally, responding professionally to negative reviews can turn potential losses into customer recovery opportunities, reinforcing trust and loyalty. Beyond Yelp, the venture should consider leveraging social media to drive more customer interactions and reviews. Featuring customers, showcasing popular dishes, and sharing behind-the-scenes content can encourage organic engagement. Creating a unique and shareable dining experience, such as a signature brunch item or themed brunch events, can also naturally generate word-of-mouth marketing and positive online buzz.
+
+By actively managing online engagement and prioritizing customer satisfaction, our restaurant can increase its review count, maintain a strong rating, and significantly reduce its risk of closure, making an optimized Yelp presence a key factor in long-term success.
+
+```{r, include=FALSE}
+yelp_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  filter(str_detect(categories, regex("\\bRestaurant\\b|\\bFood\\b", ignore_case = TRUE))) %>%
+  dplyr::select(stars, review_count, latitude, longitude, is_open) %>%
+  drop_na()
+
+yelp_restaurants <- yelp_restaurants %>%
+  mutate(
+    log_review_count = log1p(review_count),
+    latitude = scale(latitude),
+    longitude = scale(longitude)
+  )
+
+set.seed(123)
+kmeans_result <- kmeans(yelp_restaurants[, c("stars", "log_review_count", "latitude", "longitude")], 
+                        centers = 3, nstart = 25)
+yelp_restaurants$cluster <- as.factor(kmeans_result$cluster)
+
+print(paste("Clusters assigned:", length(unique(kmeans_result$cluster))))
+
+yelp_restaurants <- yelp_restaurants %>%
+  mutate(status = ifelse(is_open == 1, "Open", "Closed"))
+
+logit_model <- glm(is_open ~ stars * log_review_count, data = yelp_restaurants, family = binomial)
+
+yelp_restaurants$closure_prob <- predict(logit_model, newdata = yelp_restaurants, type = "response")
+
+yelp_restaurants <- yelp_restaurants %>%
+  mutate(closure_prob_bin = cut(closure_prob, breaks = c(0, 0.25, 0.5, 0.75, 1),
+                                labels = c("Low", "Moderate", "High", "Very High")))
+```
+
+```{r, echo=FALSE, fig.width= 10, fig.height=5, error=FALSE, warning=FALSE, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+ggplot(yelp_restaurants, aes(x = stars, y = log_review_count, z = closure_prob)) +
+  stat_density_2d(aes(fill = ..level..), geom = "polygon", contour = TRUE) +
+  
+  scale_fill_gradientn(colors = vangogh_palette[5:1], name = "Closure Probability") +
+  
+  facet_grid(~ status, labeller = labeller(status = c("Closed" = "Closed", "Open" = "Open"))) +
+  
+  scale_y_continuous(
+    breaks = log1p(c(1, 10, 100, 1000, 10000, 50000)),  
+    labels = c("1", "10", "100", "1K", "10K", "50K")  
+  ) +
+  
+  labs(
+    title = "Predicted Closure Probability by Ratings and Reviews",
+    subtitle = "Review count displayed in actual values for easier interpretation",
+    x = "Star Rating",
+    y = "Review Count", 
+    fill = "Closure Probability"
+  ) +
+  
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 6, face = "bold"),  
+    legend.position = "right",
+    legend.key.height = unit(1, "cm"),
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+# Conclusion
+
+This study set out to answer a key question: What factors contribute to the success and longevity of a restaurant in Las Vegas, and how can a prospective owner optimize their business strategy? Through a combination of exploratory data analysis, predictive modeling, and customer sentiment evaluation, we identified three critical pillars of success: concept selection, location strategy, and customer engagement.
+
+**Choosing the Right Concept**
+
+Breakfast & Brunch emerged as the most promising restaurant type, with high ratings, strong longevity, and a rapidly growing market presence in Las Vegas. Unlike casual dining and fast-food segments, which dominate the Las Vegas market, brunch presents an opportunity in a less saturated but highly demanded niche.
+
+**Selecting the Best Location**
+
+While The Strip and Downtown offer high foot traffic, they also present intense competition and elevated operational costs. Our predictive model identifies Southwest Las Vegas as a prime location, balancing strong customer engagement with lower market saturation. This area offers long-term stability and an opportunity for steady growth, making it an attractive choice for a new restaurant venture.
+
+**Delivering an Outstanding Customer Experience**
+
+Review analysis revealed three key factors that drive high ratings and long-term business success:
+
+-   Food Quality: Consistently delivering well-prepared, flavorful dishes is the most critical factor in customer satisfaction.
+-   Service Excellence: Friendly, efficient, and professional service significantly enhances the dining experience.
+-   Fair Pricing & Value Perception: Customers respond positively to restaurants that offer high-quality food at reasonable prices.
+
+Additionally, our findings confirm that restaurants with higher ratings and greater review volumes experience lower closure risks. Businesses with fewer than 100 reviews and ratings between 3.0 and 4.0 stars face the highest likelihood of closure, reinforcing the need for active reputation management.
+
+Given Yelp’s role in shaping consumer decisions, maintaining an optimized online presence is also essential. Successful restaurants actively engage with customers by encouraging satisfied diners to leave reviews, responding professionally to negative feedback to improve customer retention, and leveraging social media and digital marketing to increase brand visibility.
+
+**Final Recommendations**
+
+For a prospective restaurant owner looking to maximize longevity and profitability, we recommend:
+
+1.  **Opening a Breakfast & Brunch restaurant** to capitalize on a growing niche market.\
+2.  **Choosing a location in Southwest Las Vegas**, where strong customer engagement meets lower market saturation.\
+3.  **Focusing on customer experience**, ensuring consistent food quality, excellent service, and fair pricing.\
+4.  **Implementing a proactive online reputation strategy** to enhance visibility and credibility, reducing the risk of closure.
+
+By adopting these strategies, a new restaurant can position itself for long-term success in one of the most competitive food markets in Las Vegas.
+
+# Limitations and Critical Reflections
+
+While our analysis provides valuable insights, it is important to critically evaluate the assumptions and constraints that may have influenced our findings. Firstly, in measuring longevity through Yelp reviews, we defined a restaurant’s longevity as the time between its first and last review, assuming that a restaurant that stops receiving reviews has likely closed. However this metric has limitations, as some restaurants may still be operating yet receive fewer reviews due to declining popularity, while others may have a highly engaged customer base despite a short operational lifespan, leading to potentially misleading longevity estimates; a more precise approach would require external validation such as cross-referencing with business registration records or closure announcements. Furthermore, our approach to categorizing restaurant types represents an additional limitation: rather than including all restaurant types by automatically assigning a type from the first non-generic descriptor in the category field (excluding terms like “Restaurant/s” or “Food”), which often resulted in anomalous and overly niche classifications, we opted for a manual process that filtered only well-known restaurant types, potentially excluding some valid categories Finally, our dataset only includes restaurants that have received Yelp reviews, thereby excluding those that failed before gaining online traction and introducing a survivorship bias that might overemphasize the role of Yelp engagement in restaurant success, even though external factors such as financial mismanagement, high rent, ineffective branding, or poor location choices can also drive closures. Future research could incorporate additional business data, such as revenue figures, lease costs, or operational challenges to provide a more holistic view of restaurant longevity, and although Yelp is a dominant platform, other review sites like Google Reviews and TripAdvisor play a critical role in shaping customer perception by attracting different user demographics, suggesting that a more comprehensive analysis integrating multiple review sources would yield a richer and more balanced perspective on restaurant success.
+
+
+# References
+
+-   Yelp (2023). [Company Fast Facts](https://www.yelp-press.com/company/fast-facts/default.aspx)\
+-   PYMNTS (2023). [Everyone’s a Critic: 49M Consumers Recently Posted Online Restaurant Reviews](https://www.pymnts.com/restaurant-innovation/2023/everyones-a-critic-49m-consumers-recently-posted-online-restaurant-reviews/)\
+-   Luca, M. (2016). *Reviews, Reputation, and Revenue: The Case of Yelp.com*. [Harvard Business School Working Paper](https://www.hbs.edu/ris/Publication%20Files/12-016_a7e4a5a2-03f9-490d-b093-8f951238dba2.pdf)\
+-   Gupta, A. (2021). *Impact of Yelp Reviews on Consumer Decision-Making*. [College of DuPage Student Research Symposium](https://dc.cod.edu/cgi/viewcontent.cgi?article=1067&context=srs&utm_source=chatgpt.com)
+
+# Appendix
+
+## Appendix 1
+
+```{r, echo=FALSE, fig.width= 5, fig.height=3, fig.align="center"}
+vegas_business <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas") %>%
+  dplyr::select(business_id) %>%
+  distinct()
+
+vegas_reviews <- yelp_review %>%
+  filter(business_id %in% vegas_business$business_id) %>%  
+  mutate(date = as.Date(date, format="%Y-%m-%d"))  
+
+vegas_reviews <- vegas_reviews %>%
+  inner_join(vegas_business, by = "business_id") %>%
+  mutate(review_date = as.Date(date))  
+
+ggplot(vegas_reviews, aes(x = review_date)) +
+  geom_histogram(binwidth = 100, fill = vangogh_palette[2], color = vangogh_palette[1]) +
+  labs(
+    title = "Las Vegas Review Activity Over Time", 
+    subtitle = "Only reviews from businesses in Las Vegas",
+    x = "Date", 
+    y = "Review Count"
+  ) +
+  theme_minimal()+
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+## Appendix 2
+
+-   **business.csv**: Contains business-level details such as name, location, category, average rating, and review count. This table will be used to identify restaurant-related businesses and assess their performance.
+-   **review.csv**: Includes user-generated reviews with text content, star ratings, timestamps, and engagement metrics (e.g., number of useful, funny, or cool votes). This will serve as the foundation for sentiment analysis and customer perception studies.
+-   **user.csv**: Stores user profiles, including their total number of reviews, average ratings given, and social engagement statistics. This helps in analyzing reviewer credibility and patterns of engagement.
+-   **checkin.csv**: Logs customer check-ins at businesses over time, allowing insights into foot traffic and customer visitation trends.
+-   **tip.csv**: Contains short user comments about businesses, complementing the review dataset with concise customer feedback.
+
+```{r, include=FALSE, fig.width= 5, fig.height=3, fig.align="center"}
+yelp_review <- yelp_review %>%
+  mutate(date = as.Date(date, format="%Y-%m-%d"))
+
+closed_restaurants <- las_vegas_restaurants %>%
+  filter(is_open == 0) %>%
+  dplyr::select(business_id, name, city, state)
+
+restaurant_lifespan <- yelp_review %>%
+  filter(business_id %in% closed_restaurants$business_id) %>%
+  group_by(business_id) %>%
+  summarize(
+    first_review = min(date, na.rm = TRUE),
+    last_review = max(date, na.rm = TRUE),
+    lifespan_days = as.numeric(difftime(last_review, first_review, units = "days")),
+    .groups = "drop"
+  )
+
+closed_restaurants <- closed_restaurants %>%
+  left_join(restaurant_lifespan, by = "business_id")
+
+print(head(closed_restaurants))
+
+```
+
+```{r, include=FALSE, fig.width= 5, fig.height=3, fig.align="center"}
+filtered_restaurants <- closed_restaurants %>%
+  filter(!is.na(lifespan_days) & lifespan_days > 0)
+
+ggplot(filtered_restaurants, aes(x = lifespan_days)) +
+  geom_histogram(binwidth = 180, fill = vangogh_palette[7], color = vangogh_palette[8], alpha = 0.7) +  
+  labs(
+    title = "Distribution of Restaurant Lifespans Before Closing",
+    x = "Lifespan (Days)",
+    y = "Number of Restaurants"
+  ) +
+  theme_minimal()+
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+
+ggplot(filtered_restaurants, aes(x = lifespan_days)) +
+  geom_density(fill = vangogh_palette[1], alpha = 0.6) +
+  labs(
+    title = "Density of Restaurant Lifespans Before Closing",
+    x = "Lifespan (Days)",
+    y = "Density"
+  ) +
+  theme_minimal()+
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+
+```
+
+```{r, echo=FALSE, fig.width= 5, fig.height=3, fig.align="center"}
+yelp_review <- yelp_review %>%
+  mutate(date = as.Date(date, format="%Y-%m-%d"))
+
+restaurant_lifespan <- yelp_review %>%
+  group_by(business_id) %>%
+  summarize(
+    first_review = min(date, na.rm = TRUE),
+    last_review = max(date, na.rm = TRUE),
+    lifespan_days = as.numeric(difftime(last_review, first_review, units = "days")),
+    .groups = "drop"
+  )
+
+all_restaurants <- las_vegas_restaurants %>%
+  dplyr::select(business_id, name, city, state, is_open) %>%
+  left_join(restaurant_lifespan, by = "business_id")
+
+filtered_restaurants <- all_restaurants %>%
+  filter(!is.na(lifespan_days) & lifespan_days > 0)
+```
+
+## Appendix 3
+
+```{r, echo=FALSE, fig.width= 5, fig.height=3, fig.align="center"}
+ggplot(filtered_restaurants, aes(x = lifespan_days, fill = as.factor(is_open))) +
+  geom_density(alpha = 0.6) +
+  scale_fill_manual(values = c(vangogh_palette[1], vangogh_palette[3]), labels = c("Closed", "Open")) +
+  labs(
+    title = "Density of Restaurant Lifespans",
+    subtitle = "Comparing Open vs. Closed Restaurants",
+    x = "Lifespan (Days)",
+    y = "Density",
+    fill = "Status"
+  ) +
+  theme_minimal()+
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+## Appendix 4
+
+```{r, echo=FALSE, fig.width= 5, fig.height=3, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+reviews_summary <- yelp_review %>%
+  group_by(business_id) %>%
+  summarize(
+    num_reviews = n(),                      
+    avg_stars   = mean(stars, na.rm = TRUE)  
+  )
+
+ggplot(reviews_summary, aes(x = num_reviews, y = avg_stars, color = avg_stars)) +
+  geom_point(size = 2, alpha = 0.8) +  
+
+  scale_color_gradientn(colors = vangogh_palette[1:5], name = "Avg Stars") + 
+  
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") + 
+  
+  labs(
+    title = "Relationship between Number of Reviews and Star Rating",
+    x = "Number of Reviews",
+    y = "Average Star Rating",
+    color = "Avg Stars"
+  ) +
+  
+  theme_minimal(base_size = 14) + 
+  theme(
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.text = element_text(size = 7), 
+    legend.title = element_text(size = 7), 
+    legend.position = "right"                              
+  )
+
+```
+
+```{r, include=FALSE}
+vangogh_palette <- rev(met.brewer("VanGogh2"))
+weekday_levels <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+heatmap_data <- yelp_checkin %>%
+  mutate(weekday = factor(weekday, levels = weekday_levels)) %>%
+  group_by(weekday, hour) %>%
+  summarize(total_checkins = sum(checkins), .groups = "drop")
+
+heatmap_data$hour <- as.numeric(gsub(":00", "", heatmap_data$hour))
+```
+
+## Appendix 5
+
+```{r, echo=FALSE, fig.width= 5, fig.height=3, fig.align="center"}
+ggplot(heatmap_data, aes(x = hour, y = weekday, fill = total_checkins)) +
+  geom_tile(color = "white") +
+  scale_fill_gradientn(colors = vangogh_palette) + 
+  labs(title = "Restaurant Check-in Heatmap",
+       x = "Hour of the Day",
+       y = "Day of the Week",
+       fill = "Check-ins") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
+
+```{r, include=FALSE, fig.width=10, fig.align="center"}
+yelp_reviews <- yelp_review %>%
+  mutate(date = as.Date(date, format = "%Y-%m-%d"))
+
+business_review_dates <- yelp_reviews %>%
+  group_by(business_id) %>%
+  summarize(
+    first_review = min(date, na.rm = TRUE),
+    last_review = max(date, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+yelp_restaurants <- las_vegas_restaurants %>%
+  filter(city == "Las Vegas" & !is.na(categories)) %>%
+  filter(str_detect(categories, regex("\\b(Restaurant|Food)\\b", ignore_case = TRUE))) %>%
+  dplyr::select(business_id, stars, review_count, latitude, longitude, is_open, neighborhood) %>%
+  left_join(business_review_dates, by = "business_id") %>%
+  mutate(
+    days_open = as.numeric(difftime(last_review, first_review, units = "days")),
+    log_review_count = log1p(review_count),  
+    neighborhood = as.factor(neighborhood)
+  ) %>%
+  drop_na(days_open) 
+
+summary(yelp_restaurants$days_open)
+
+yelp_restaurants <- yelp_restaurants %>%
+  mutate(star_category = case_when(
+    stars <= 2.5 ~ "Low",
+    stars >= 4 ~ "High",
+    TRUE ~ "Mid"
+  ))
+
+set.seed(123)
+balanced_data <- yelp_restaurants %>%
+  group_by(star_category) %>%
+  sample_n(size = min(table(yelp_restaurants$star_category)), replace = TRUE) %>%
+  ungroup()
+
+table(balanced_data$star_category)
+
+smooth_model <- gam(
+  log1p(days_open) ~ s(stars, k=5) + s(log_review_count, k=10) + neighborhood + star_category, 
+  data = balanced_data
+)
+
+prediction_grid <- expand.grid(
+  stars = seq(min(balanced_data$stars), max(balanced_data$stars), length.out = 100),
+  review_count = seq(1, quantile(balanced_data$review_count, 0.95), length.out = 100),
+  neighborhood = unique(balanced_data$neighborhood),
+  star_category = unique(balanced_data$star_category)
+)
+
+prediction_grid$log_review_count <- log1p(prediction_grid$review_count)
+
+prediction_grid$predicted_days_open <- expm1(predict(smooth_model, newdata = prediction_grid))
+```
+
+```{r, include=FALSE, fig.width= 10, fig.height=5, fig.align="center"}
+vangogh_palette <- met.brewer("VanGogh2")
+
+ggplot(prediction_grid, aes(x = stars, y = review_count, fill = predicted_days_open)) +
+  geom_tile() +
+  facet_wrap(~ neighborhood, scales = "free") +
+  
+  scale_fill_gradientn(colors = vangogh_palette[1:5], name = "Predicted Days Open") +
+  
+  labs(
+    title = "Predicted Business Longevity by Ratings, Reviews, and Neighborhood",
+    x = "Star Rating",
+    y = "Review Count"
+  ) +
+  
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 6, face = "bold"),  
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right",
+    text = element_text(size = 7),      
+    plot.title = element_text(size = 9),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 7), 
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7)
+  )
+```
