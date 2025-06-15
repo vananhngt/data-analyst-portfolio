@@ -56,6 +56,20 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Deliverables:**
 
 
+#### Lettuce Demand Forecasting for a Fast-Food Restaurant Chain
+
+- **Goal:** Optimize inventory planning by forecasting short-term lettuce demand across multiple restaurant locations using time series models.
+
+- **Description:** This project involved end-to-end forecasting of lettuce consumption using internal transactional data from a fast-food restaurant chain. Multiple datasets—including POS transactions, recipes, ingredients, and store metadata—were merged to compute daily lettuce usage. A robust preprocessing pipeline standardized units and connected sub-recipes to main recipes. Time series models (ETS and ARIMA) were applied to forecast 14-day demand at store level, followed by model comparison and selection per location.
+
+- **Skills / Tools Used:** R (tidyverse, forecast, tseries, ggplot2, patchwork), time series modeling (ETS, ARIMA), data wrangling, 
+
+- **Results & Insights:** Holt-Winters and ARIMA models were evaluated side-by-side across four stores. ETS(A,N,A) outperformed others in two cases due to its adaptability to seasonal patterns, while ARIMA models yielded stronger accuracy in stores with noisier demand. Each store was assigned its optimal model, and forecasts were compiled into a daily table to support operational decisions. The project demonstrated how integrated data and time series methods can drive ingredient-level forecasting for improved supply chain efficiency.
+
+- **Deliverables:**
+  - [Forecasting Notebook (.Rmd)](./lettuce-demand-forecasting/Lettuce Demand Forecasting.Rmd)
+  - [Interactive HTML Report](./lettuce-demand-forecasting/Lettuce Demand Forecasting.html)
+
 
 
 
