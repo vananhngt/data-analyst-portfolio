@@ -23,5 +23,5 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Results & Insights:**  The analysis identified individuals who actively initiated conversations, as well as those frequently sought out and trusted by others. A key individual was found to serve as a connector between two distinct clusters, highlighting a bridging role across subgroups. Overall, the communication structure appeared decentralized, with influence distributed among multiple prominent figures rather than concentrated in a single leader.
 
 - **Deliverables:**
-  - [Notebook (.ipynb)]([./Projects/organizational-network-analysis/org-network-analysis.ipynb](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Organizational%20Network%20Analysis/Organizational%20Network%20Analysis.ipynb))
-  - [Summary Report (.pdf)]([./Projects/organizational-network-analysis/org-network-summary.pdf](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Organizational%20Network%20Analysis/Organizational%20Network%20Analysis.pdf))
+  - [Notebook (.ipynb)](Organizational Network Analysis/Organizational Network Analysis.ipynb)
+  - [Summary Report (.pdf)](Organizational Network Analysis/Organizational Network Analysis.pdf)
