@@ -42,7 +42,7 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Deliverables:**
   - [Titanic Survival Analysis Report](https://vananhngt.github.io/data-analyst-portfolio/Titanic-Survival-Analysis.html)
 
-#### Yelp Restaurant Insights: Las Vegas
+#### Decoding Yelp Success in Las Vegas
 
 - **Goal:** Help prospective restaurant owners make data-driven decisions on concept and location using Yelp reviews and business data.
 
