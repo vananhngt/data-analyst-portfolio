@@ -46,7 +46,7 @@ I’m a curious and determined person, quick to learn and passionate about conti
 
 - **Goal:** Help prospective restaurant owners make data-driven decisions on concept and location using Yelp reviews and business data.
 
-- **Description:** The project involved analyzing Yelp publicly available data to uncover what contributes to high ratings and long-term success in Las Vegas restaurants. Exploratory and predictive techniques were used to evaluate restaurant categories, geographic performance, review patterns, and closure risks. The findings focus on how customer experience, value, online engagement, and location affect success.
+- **Description:** The project involved analyzing Yelp's publicly available data to uncover what contributes to high ratings and long-term success in Las Vegas restaurants. Exploratory and predictive techniques were used to evaluate restaurant categories, geographic performance, review patterns, and closure risks. The findings focus on how customer experience, value, online engagement, and location affect success.
 
 - **Skills / Tools Used:** R (tidyverse, ggplot2, sentiment analysis), data wrangling, EDA
 
