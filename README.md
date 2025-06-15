@@ -40,6 +40,6 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Results & Insights:** The analysis revealed that female passengers and children under the age of 10 had significantly higher survival rates. Passengers traveling in small families tended to have better outcomes compared to those traveling alone or in large family groups. Higher ticket fares, often associated with first-class accommodations, were strongly linked to increased chances of survival. Additionally, clear differences were observed in the distributions of age and fare between survivors and non-survivors, highlighting the influence of both demographic and socio-economic factors on survival outcomes.
 
 - **Deliverables:**
-
+  - [html](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Titanic%20Survival%20Analysis.html)
 
 
