@@ -14,7 +14,7 @@ I’m a curious and determined person, quick to learn and passionate about conti
 
 #### Organizational Communication Network Analysis
 
-- **Goal:**  To identify leaders and opinion-makers in a student cohort based on their email communication data.
+- **Goal:**  To explore how demographic factors, family size, and socio-economic class influenced passenger survival during the Titanic disaster.
 
 - **Description:**  Based on email exchange data, two directed networks were constructed — one representing messages sent and the other representing messages received. The analysis aimed to distinguish individuals who actively initiate communication (opinion-makers) from those who are frequently contacted (leaders), while also uncovering deeper structural insights into the cohort’s communication dynamics.
 
@@ -25,3 +25,21 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Deliverables:**
   - [Organizational Network Analysis.ipynb](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Organizational%20Network%20Analysis/Organizational%20Network%20Analysis.ipynb)
   - [Organizational Network Analysis.pdf](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Organizational%20Network%20Analysis/Organizational%20Network%20Analysis.pdf)
+
+
+### R
+
+#### Titanic Survival Analysis
+
+- **Goal:** Explore how factors like gender, age, family size, and socio-economic class influenced passenger survival during the Titanic disaster.
+
+- **Description:** Using the `titanic_train` dataset, this project conducts a thorough exploratory analysis with R.  The study investigates survival patterns based on gender, age, ticket fare, family presence, and class. Key visualizations include bar charts, density plots, ridge plots, and box plots highlighting relationships between features and survival outcomes. A custom variable for family size was introduced and segmented into categories to evaluate its impact.
+
+- **Skills / Tools Used:** R (ggplot2, dplyr, ggridges), data wrangling, exploratory data analysis, statistical graphics, Quarto
+
+- **Results & Insights:** The analysis revealed that female passengers and children under the age of 10 had significantly higher survival rates. Passengers traveling in small families tended to have better outcomes compared to those traveling alone or in large family groups. Higher ticket fares, often associated with first-class accommodations, were strongly linked to increased chances of survival. Additionally, clear differences were observed in the distributions of age and fare between survivors and non-survivors, highlighting the influence of both demographic and socio-economic factors on survival outcomes.
+
+- **Deliverables:**
+
+
+
