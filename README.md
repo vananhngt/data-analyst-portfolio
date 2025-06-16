@@ -101,7 +101,7 @@ I’m a curious and determined person, quick to learn and passionate about conti
 **Results & Insights:** We identified the most-watched film genres for each customer, enabling personalized marketing strategies. By leveraging window functions, we tracked cumulative payments and rental activity over time, offering a dynamic view of customer engagement. Additionally, we pinpointed the top-rented films in each store, informing inventory and promotional decisions. The queries also uncovered customers with incomplete transactions, highlighting potential issues in the payment process that could be addressed to improve operational efficiency.
 
 **Deliverables:**
-
+  - [DVD Rental.sql](https://github.com/vananhngt/data-analyst-portfolio/blob/main/DVD%20Rental.sql)
 
 
 
