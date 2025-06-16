@@ -1,0 +1,910 @@
+---
+title: "Text Analytics on Earnings Calls"
+author: "Van Anh Nguyenova"
+output:
+  pdf_document: 
+    df_print: paged  
+  html_document: default
+  html_notebook: default
+fontsize: 11pt
+mathjax: true
+---
+
+```{r, fig.align='center', echo=FALSE}
+library(quanteda)
+library(ggrepel)
+library(textclean)
+library(tidyverse)
+library(glmnet)
+library(sentimentr)
+library(spacyr) 
+library(politeness)
+library(lubridate)
+library(ggplot2)
+library(textTinyR)
+library(data.table)
+library(dplyr)
+library(purrr)
+library(tibble)
+library(knitr)
+library(kableExtra)
+library(tidytext)
+library(tidyr)
+library(caret)
+
+source("vectorFunctions.R")
+source("TAB_dfm.R")
+source("kendall_acc.R")
+```
+
+```{r, fig.align='center', echo=FALSE}
+ecMain<-readRDS("earningsDat.RDS")
+
+ecQA<-readRDS("earningsQandA.RDS") %>%
+  mutate(wordcount=str_count(text,"[[:alpha:]]+"))
+```
+
+# Introduction
+
+Earnings calls are an essential component of financial communication, where executives provide updates on a company's performance and answer questions from analysts. These transcripts contain valuable linguistic signals that can reflect corporate sentiment, transparency, and confidence. This project leverages text analytics techniques to explore how language used during earnings calls relates to business outcomes.
+
+The analysis focuses on three key objectives: (1) predicting whether companies meet their earnings-per-share (EPS) expectations using textual features, (2) comparing the tone and politeness between analyst questions and executive responses, and (3) classifying transcripts into fiscal quarters based on early responses. By combining ngram-based features, word embeddings, politeness markers, and classification models, the project demonstrates how natural language processing can uncover patterns in financial discourse that support investor decision-making and business analysis.
+
+# Data Preparation
+
+```{r, fig.align='center', warning=FALSE, echo=FALSE}
+ecMain$call_date <- mdy(ecMain$call_date)
+```
+
+```{r, include=FALSE}
+min(ecMain$call_date)
+max(ecMain$call_date)
+```
+
+First, we converted the `call_date` column to a date format to ensure proper handling and analysis. The dataset spans from the earliest call date, January 6, 2010, to the most recent date, December 20, 2013.
+
+```{r, fig.align='center'}
+ecMain <- ecMain %>%
+  mutate(truncated_speech = substr(as.character(opening_speech), 1, 3000)) %>%
+  arrange(FY)  
+
+ecMain_before_2013 <- ecMain %>%
+  filter(FY <= 2012)
+
+ecMain_after_2013 <- ecMain %>%
+  filter(FY >= 2013)
+```
+
+We created a new variable, `truncated_speech`, containing only the first 3,000 characters of each company's opening speech to reduce computational load while retaining essential information. This was done using the `substr()` function.
+
+```{r, fig.align='center'}
+# Test set: All calls during fiscal year 2012
+test_set <- ecMain_before_2013 %>%
+  filter(FY == 2012)
+
+# Training set: All calls before fiscal year 2012
+train_set <- ecMain_before_2013 %>%
+  filter(FY < 2012)
+```
+
+```{r, include=FALSE}
+nrow(test_set)
+nrow(train_set)
+```
+
+Next, we split the data into two subsets: the test set consisting of all calls from fiscal year 2012 and the training set containing calls from fiscal years prior to 2012. The test set allows us to evaluate the model on unseen data, while the training set provides historical data to train the model and predict future outcomes, specifically for fiscal year 2012.
+
+The training set includes 5,107 records, and the test set includes 3,285 records. This split ensures that the model is trained on past data and tested on future data for proper evaluation.
+
+
+# Predicting EPS Using Text
+
+## LASSO Regression with Bigrams
+
+In this section, we extract bigrams from the truncated opening speeches and use them as predictors for EPS_actual. We first create a Document-Feature Matrix (DFM) using `TAB_dfm()` and convert it to a dataframe, removing the `doc_id` column to ensure only numeric features are included. The dataset is then split into training and test sets, where `trainX` and `testX` contain the bigram features, and `trainY` and `testY` contain the corresponding EPS_actual values.
+
+```{r, fig.align='center'}
+ecMain_dfm_bigrams <- TAB_dfm(ecMain_before_2013$truncated_speech, ngrams = 2) %>%
+  convert(to = "data.frame") %>%
+  select(-doc_id)
+```
+
+```{r, fig.align='center'}
+ecMain_dfm_train <- TAB_dfm(train_set$truncated_speech)
+ecMain_dfm_test <- TAB_dfm(test_set$truncated_speech, min.prop = 0) %>%
+  dfm_match(colnames(ecMain_dfm_train))
+```
+
+We are also generating the bigram feature matrices separately for the training and test sets using the `TAB_dfm()` function for later use. First, we create a DFM for the training speeches using default parameters. Then, we construct a corresponding DFM for the test set, setting `min.prop = 0` to include all terms—even rare ones. We then apply `dfm_match()` to align the test dfm with the training DFM, ensuring they have the exact same feature structure (i.e., columns). This step is essential because LASSO regression requires both the training and test matrices to have identical dimensions and aligned features.
+
+```{r, fig.align='center'}
+train_split <- nrow(train_set)
+
+trainX <- ecMain_dfm_bigrams[1:train_split, ] %>%
+  as.matrix()
+
+trainY <- ecMain_before_2013[1:train_split, ] %>%
+  pull(EPS_actual)
+
+testX <- ecMain_dfm_bigrams[(train_split + 1):nrow(ecMain_dfm_bigrams), ] %>% 
+  as.matrix()
+
+testY <- ecMain_before_2013[(train_split + 1):nrow(ecMain_before_2013), ] %>%
+  pull(EPS_actual)
+```
+
+```{r, fig.align='center', include=FALSE}
+nrow(trainX)
+length(testY)
+```
+
+Finally, we train a LASSO regression model using `cv.glmnet()`, setting `alpha = 1` to enforce L1 regularization. This ensures that only the most relevant bigrams contribute to predicting earnings per share, helping to reduce overfitting and improve interpretability.
+
+```{r, fig.align='center', warning=FALSE}
+lasso_model <- glmnet::cv.glmnet(x = trainX, y = trainY, alpha = 1)
+```
+
+```{r, fig.align='center'}
+test_lasso_predict <- predict(lasso_model, newx = testX, s="lambda.min")
+lasso_acc <- kendall_acc(test_lasso_predict, testY)
+lasso_acc
+```
+We managed to train a LASSO regression model using bigram features extracted from the truncated opening speeches. The model achieved an accuracy of 68.63%, with a 95% confidence interval between 67.04% and 70.22%. This result suggests that bigram-level language patterns in earnings calls are highly predictive of actual earnings per share. The strong and precise performance indicates that frequent two-word phrases can effectively capture financial tone and signals present in company communications.
+
+```{r, fig.align='center'}
+lasso_coefs <- lasso_model %>%
+  coef(s="lambda.min") %>%
+  drop() %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "ngram") %>%
+  rename(score=".") %>%
+  filter(score!=0 & ngram!="(Intercept)" & !is.na(score)) 
+```
+
+```{r, fig.align='center', warning=FALSE}
+plot_dat <- lasso_coefs %>%
+  left_join(data.frame(ngram=colnames(trainX),
+                       freq=colMeans(trainX))) %>%
+  mutate_at(vars(score,freq),~round(.,3))
+```
+We then extract the non-zero coefficients from the trained LASSO model. It converts the coefficient matrix into a dataframe, assigns meaningful column names, and filters out the intercept and any zero-valued coefficients to retain only the most influential bigrams.
+
+We merge frequency data with the extracted coefficients. It calculates the mean occurrence of each bigram in the training set using `colMeans(trainX)`, ensuring we can analyze both the impact (coefficient score) and frequency of each bigram in earnings call speeches. Finally, values are rounded for better readability.
+
+```{r, fig.align='center', warning=FALSE, fig.width=17, echo=FALSE}
+ggplot(plot_dat, aes(x = score, y = freq, label = ngram, color = score)) +
+  geom_point() +
+  geom_label_repel(max.overlaps = 15) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_color_gradient2(low = "coral2", mid = "gray80", high = "cyan3", 
+                        midpoint = 0) +
+  scale_y_continuous(trans = "log2") + 
+  theme_bw() +
+  labs(
+    title = "LASSO Coefficients for Bigram Features",
+    x = "Coefficient (Impact on EPS_actual)",
+    y = "Average Frequency (log scale)",
+    caption = "Positive = higher EPS; Negative = lower EPS"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 14),
+    plot.title = element_text(size = 24, hjust = 0.5, face = "bold"),
+    caption.text = element_text(size = 12) 
+  )
+```
+The LASSO regression model has identified key bigrams from the opening speeches that correlate with higher and lower earnings per share (EPS_actual). The plot shows these bigrams along two dimensions: their impact on EPS (x-axis) and their average frequency in speeches (y-axis, log scale). Bigrams with positive coefficients are associated with higher EPS, while those with negative coefficients indicate lower EPS.
+
+On the right side of the plot, positive bigrams, such as "invest_offic", "refer_risk," and "post_investor" suggest discussions around growth opportunities, strategic investments, or managing risks in a way that aligns with business success. These terms likely indicate confidence, future-oriented planning, or addressing important financial concerns, all of which can signal strong performance and higher earnings.
+
+On the other hand, negative bigrams like "attent_safe", "subject_uncertainit" and "differ_result" appear to be linked with uncertainty or caution in the speech. These terms might suggest challenges, risk-averse strategies, or a lack of clarity about the company’s financial health, which could indicate lower earnings. The presence of such language could signal issues that investors or stakeholders might interpret as negative signals, potentially leading to lower confidence and lower earnings.
+
+A significant number of bigrams have coefficients close to zero, indicating that many features do not strongly influence the prediction of EPS. Terms like "forward-look_statement," "first_quarter," and "investor_relat" are common across many earnings calls, indicating general financial discussions rather than strong performance signals.
+
+Thus, the positive words tend to convey optimism, growth, and stability, while the negative words are more associated with uncertainty, caution, or potential risks, all of which can significantly influence how investors perceive a company’s future performance.
+
+
+## LASSO Regression with Word2Vec
+
+To extend our analysis beyond bigram features, we utilized word embeddings from the full FastText pre-trained model (`crawl-300d-2M.vec`) to represent each earnings call opening speech as a vector. We used the `vecCheck()` function, along with frequency weights from `wfFile.RData`, to compute document-level embeddings. To reduce noise and potential redundancy, we applied a PCA trimming with one principal component removed (`PCAtrim = 1`).
+
+This word embedding approach offers a semantically richer representation of the speeches and serves as a complementary model to the bigram-based LASSO model developed earlier.
+
+```{r, fig.align='center'}
+vecFile <- data.table::fread("crawl-300d-2M.vec",
+                            quote="",header=F,col.names = c("word",paste0("vec",1:300)))
+
+load("wfFile.RData")
+set.seed(2022)
+```
+
+```{r, fig.align='center'}
+vdat <- vecCheck(ecMain_before_2013$truncated_speech,
+               vecFile,
+               wfFile,
+               PCAtrim=1)
+```
+
+```{r, fig.align='center'}
+vdat_train <- vdat[1:nrow(train_set), ]
+vdat_test <- vdat[(nrow(train_set)+1):nrow(vdat), ]
+```
+
+We then split the resulting embedding matrix into training and test sets aligned with our earlier setup. A LASSO regression model was trained on the word2vec features using `cv.glmnet()` with L1 regularization. Finally, we generated predictions on the test set and evaluated performance using the `kendall_acc()` function, which computes Kendall’s tau-based accuracy along with confidence intervals.
+
+```{r, fig.align='center'}
+lasso_vec <- glmnet::cv.glmnet(x = vdat_train, y = trainY, alpha = 1)
+```
+
+```{r, fig.align='center'}
+test_vec_predict <- predict(lasso_vec, newx = vdat_test, s="lambda.min")
+vec_acc <- kendall_acc(test_vec_predict, testY)
+vec_acc
+```
+The LASSO model trained on word2vec embeddings achieved an accuracy of 62.18%, with a 95% confidence interval ranging from 60.52% to 63.84%. This indicates a moderately strong association between the semantic content of the opening speeches and the actual earnings per share (EPS), although it performed slightly worse than the bigram-based LASSO model. The relatively narrow confidence interval suggests stable performance across the test set. These results highlight that word embeddings capture meaningful latent information that correlates with financial outcomes, supporting their utility as predictive features in earnings call analysis.
+
+```{r, fig.align='center'}
+plot(lasso_vec)
+```
+The cross-validation plot displays the mean-squared error (MSE) across a range of regularization strengths (log(λ)) for the LASSO model using word2vec embeddings. The red dots represent the average MSE at each λ, while the vertical grey lines indicate ±1 standard error.
+
+The minimum MSE achieved is approximately 0.55, which occurs around log(λ) ≈ -6, the value chosen as `lambda.min`. At this point, the model retains approximately 245 non-zero coefficients, indicating the number of features actively contributing to prediction. This point is marked by the leftmost vertical dashed line. The second vertical line on the right corresponds to `lambda.1se`, a more conservative choice that selects the largest λ within one standard error of the minimum — this would favor a sparser model.
+
+## LASSO Regression Combined Features
+
+```{r, fig.align='center', warning=FALSE}
+combined_x_train <- cbind(vdat_train, ecMain_dfm_train)
+combined_x_test <- cbind(vdat_test, ecMain_dfm_test)
+
+lasso_all <- glmnet::cv.glmnet(x = combined_x_train,
+                             y = trainY)
+```
+
+```{r, echo=FALSE}
+plot(lasso_all)
+```
+Based on the plot, the mean-squared error (MSE) varies as log(λ) changes. For log(λ) values around -5, the MSE is at its lowest, indicating the optimal value of λ for the model. As λ decreases further (i.e., log(λ) becomes more negative), the MSE starts to rise, suggesting that too little regularization leads to overfitting. On the other hand, as λ increases (log(λ) becomes more positive), the MSE also increases, suggesting that too much regularization leads to underfitting.
+
+The vertical dotted lines, positioned around log(λ) ≈ -5, indicate the range where the MSE is minimized. The range between log(λ) ≈ -5 and log(λ) ≈ -4 corresponds to the optimal regularization region, where the model achieves the best balance between bias and variance.
+
+```{r, fig.align='center'}
+test_all_predict<-predict(lasso_all,
+                          newx = combined_x_test,
+                          s="lambda.min")
+```
+
+```{r, fig.align='center'}
+ngram_vec_acc <- kendall_acc(test_all_predict, testY)
+ngram_vec_acc
+```
+To explore whether integrating lexical and semantic features improves performance, we trained a third LASSO model using a combined feature set that merges bigram frequencies and word2vec embeddings. The resulting model achieved an accuracy of 67.01%, with a 95% confidence interval ranging from 65.4% to 68.62% based on Kendall's tau.
+
+Compared to the bigram-only model (68.63%) and the word2vec-only model (62.18%), the combined model performed better than the semantic model alone but slightly worse than the bigram model. This suggests that while word embeddings provide additional semantic depth, the bigram features carried most of the predictive power in this case. Nonetheless, the combined model still maintained a strong and stable performance, with nearly 1,000 non-zero coefficients at the optimal lambda (lambda.min), as shown in the cross-validation plot. 
+
+## Benchmarks 
+
+To contextualize the performance of our trained models, we introduced two simple benchmark features: word count and sentiment score of the truncated opening speeches. Word count was calculated as the number of alphabetic tokens in each speech, while sentiment was computed using the `sentiment_by()` function to obtain the average sentiment score per document. We then evaluated their predictive accuracy with respect to `EPS_actual` using the `kendall_acc()` function.
+
+```{r, fig.align='center', warning=FALSE}
+test_set <- test_set %>%
+  mutate(wdct=str_count(truncated_speech,"[[:alpha:]]+"),
+         sentiment=truncated_speech %>%
+           sentiment_by() %>%
+           pull(ave_sentiment)
+  ) 
+```
+
+```{r, fig.align='center'}
+wdct_acc <- kendall_acc(test_set$wdct, testY)
+sentiment_acc <- kendall_acc(test_set$sentiment, testY)
+```
+
+```{r, fig.align='center', echo=FALSE}
+bind_rows(lasso_acc %>%
+            mutate(features = "Bigrams"),
+          vec_acc %>%
+            mutate(features = "Word2Vec"),
+          ngram_vec_acc %>%
+            mutate(features = "Bigrams + Word2Vec"),
+          wdct_acc %>%
+            mutate(features = "Word Count"),
+          sentiment_acc %>%
+            mutate(features = "Sentiment")) %>%
+  ggplot(aes(x = features, color = features,
+             y = acc, ymin = lower, ymax = upper)) +
+  geom_point(size = 3) +  
+  geom_errorbar(width = 0.4) +
+  theme_bw() +
+  labs(
+    title = "Accuracy of Different Feature Sets",  
+    x = "Feature Set",
+    y = "Model Accuracy (%)", 
+    caption = "Error bars represent 95% confidence intervals"
+  ) +
+  geom_hline(yintercept = 50, linetype = "dashed", color = "gray") +  
+  coord_flip() +
+  theme(
+    axis.text = element_text(size = 12),  
+    axis.title = element_text(size = 14),
+    panel.grid = element_blank(),
+    legend.position = "none", 
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5), 
+    plot.caption = element_text(size = 10, hjust = 1) 
+  )
+```
+The plot above displays the model accuracy of different feature sets in predicting actual earnings per share (EPS), along with 95% confidence intervals. Among the five evaluated approaches, the bigram-based LASSO model achieved the highest accuracy at approximately 68.77%, followed closely by the combined model (bigrams + word2vec) at 67.01%. The word2vec-only model reached 62.18%, suggesting that semantic features contribute predictive value, though not as strongly as lexical n-grams.
+
+In contrast, the two benchmark models, based on word count and sentiment score, performed slightly below the 50% baseline, highlighting their limited standalone predictive power. The horizontal dashed line at 50% represents chance-level performance, against which all three LASSO models clearly outperform.
+
+Overall, the plot demonstrates that while simple heuristics provide minimal insight, more sophisticated text representations, particularly bigrams, are effective for modeling financial outcomes from corporate communication.
+
+
+# Temporal Similarity in Speeches
+
+We identified 448 companies that have complete earnings call data for all four quarters in both FY 2011 and FY 2012, totaling eight speeches per company. In this section, the goal is to compute the average similarity between each company’s Q1 2011 speech and its seven subsequent speeches (Q2–Q4 of 2011 and Q1–Q4 of 2012). To do this, we first isolate the Q1 2011 speeches and then left-join them with the remaining seven quarters for each company, enabling pairwise similarity calculations across time.
+
+## Filtering and Matching
+
+```{r, fig.align='center'}
+complete_companies <- ecMain %>%
+  filter(FY %in% c(2011, 2012)) %>%
+  count(IBES_ID, FY) %>%
+  filter(n == 4) %>%
+  count(IBES_ID) %>%
+  filter(n == 2) %>%
+  pull(IBES_ID)
+```
+
+To begin our analysis, we identified the subset of companies that have complete data for both fiscal years 2011 and 2012, that is four quarterly speeches in each year, totaling eight speeches per company. We grouped the data by `IBES_ID` and counted the number of speeches per fiscal year. Companies with exactly four entries in both 2011 and 2012 were retained. This correctly resulted in 448 companies with a full set of quarterly earnings call speeches, which we will use for the similarity analysis in the next steps.
+
+```{r, fig.align='center'}
+ec_complete_subset <- ecMain %>%
+  filter(IBES_ID %in% complete_companies,
+         FY %in% c(2011, 2012))
+
+q1_2011 <- ec_complete_subset %>%
+  filter(FY == 2011, FQ == 1) %>%
+  select(IBES_ID, base_text = truncated_speech)
+
+other_quarters <- ec_complete_subset %>%
+  filter(!(FY == 2011 & FQ == 1)) %>%
+  select(IBES_ID, FY, FQ, compare_text = truncated_speech)
+```
+
+```{r, fig.align='center'}
+speech_pairs <- q1_2011 %>%
+  left_join(other_quarters, by = "IBES_ID") %>%
+  select(IBES_ID, FY, FQ, base_text, compare_text) 
+```
+
+Next, we filtered the full dataset to include only speeches from these 448 companies during fiscal years 2011 and 2012. We then split the data into two groups: the Q1 2011 speeches, which serve as the reference point (`base_text`), and the remaining seven speeches for each company (`compare_text`), covering Q2–Q4 of 2011 and all four quarters of 2012. To enable direct comparison, we performed a left join to pair each company's Q1 2011 speech with its seven subsequent quarterly speeches, also retaining the fiscal year (FY) and quarter (FQ) of each comparison for contextual reference in the analysis.
+
+
+## Analyzing Temporal Speech Similarity Between Earnings Calls
+
+In this section, we analyzed the temporal speech similarity between earnings calls across different quarters. 
+
+```{r}
+sim <- numeric(nrow(speech_pairs))
+
+for (i in 1:nrow(speech_pairs)) {
+  sim[i] <- vecSimCalc(
+    x = speech_pairs$compare_text[i],
+    y = speech_pairs$base_text[i],
+    vecfile = vecFile,
+    wffile = wfFile
+  )
+}
+```
+
+```{r}
+speech_pairs$similarity <- sim
+```
+
+To achieve this, we first calculated the cosine similarity between the speech in Q1 2011 (`base_text`) and the speeches from the subsequent quarters (`compare_text`). We used the Word2Vec model for generating text embeddings and measured the similarity between the vector representations of these speeches. This process was repeated for all speech pairs, and the resulting similarity scores were stored.
+
+```{r, fig.align='center', warning=FALSE, echo=FALSE}
+similarity_by_quarter <- speech_pairs %>%
+  group_by(FY, FQ) %>%
+  summarise(avg_similarity = mean(similarity, na.rm = TRUE)) %>%
+  arrange(FY, FQ)
+```
+
+```{r, echo=FALSE}
+similarity_by_quarter %>%
+  knitr::kable(format = "latex") %>%
+  kableExtra::kable_styling(latex_options = c("striped", "hover", "condensed"), 
+                            full_width = FALSE, font_size = 11)
+```
+
+Next, we grouped the data by fiscal year (FY) and fiscal quarter (FQ) to compute the average similarity for each quarter, allowing us to track changes over time. All the similarity values are very high, indicating that the opening speeches throughout the quarters are very similar to the first one in 2011. The similarities range from 0.993 to 0.989, showing only gradual slight decreases. Notably, in Q1 2012, the similarity even increased slightly.  This increase could be due to Q1 being the first quarter of the new fiscal year, potentially leading to a more standardized or familiar opening speech.
+
+```{r, echo=FALSE}
+similarity_by_quarter$quarter <- factor(
+  interaction(similarity_by_quarter$FY, similarity_by_quarter$FQ, sep = "Q"),
+  levels = c("2011Q1", "2011Q2", "2011Q3", "2011Q4", "2012Q1", "2012Q2", "2012Q3", "2012Q4")
+)
+
+ggplot(similarity_by_quarter, aes(x = quarter, y = avg_similarity, group = 1)) +
+  geom_line(color = "cyan3", size = 1.2) +
+  geom_point(size = 3) +
+  labs(
+    title = "Average Similarity to 2011 Q1 Speeches Over Time",
+    x = "Quarter",
+    y = "Cosine Similarity (Word2Vec, Arora SIF)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+  )
+```
+
+The plot additionally highlights the gradual decrease in similarity. The most noticeable decline occurs from Q2 2011 to Q1 2012, with Q1 2012 showing a slight increase compared to Q4 2011. Overall, the trend demonstrates a gradual decrease in similarity, suggesting that the speeches evolved slightly over time, possibly reflecting changing business conditions or shifts in corporate communication strategies.
+
+
+# Q&A Text Analysis
+
+We now turn to the question-and-answer portion of the earnings calls to examine which features of the Q&A content help predict a company’s actual earnings per share (EPS). Two separate models are trained: one using the text of the first ten questions from each call, and another using the corresponding answers. To prepare the data for this analysis, we first aggregate the turn-level text into a conversation-level format, ensuring each earnings call is represented by a single block of question text and a single block of answer text.
+
+## Conversation-Level Data
+
+Thus, we first focused on extracting the relevant parts of the Q&A data from each earnings call. Specifically, we filtered the dataset to retain only the first ten questions and the corresponding answers from each call. In the dataset, each entry is a conversational turn, with the asker variable indicating whether a line is a question (asker == 1) or an answer (asker == 0). We used this variable, along with the question index, to identify the relevant portions of the dialogue.
+
+```{r, fig.align='center'}
+qa_10 <- ecQA %>%
+  filter(question <= 10) %>%
+  mutate(type = ifelse(asker == 1, "question", "answer")) %>%
+  group_by(callID, type) %>%
+  summarise(text = paste(text, collapse = " "), .groups = "drop") %>%
+  pivot_wider(names_from = type, values_from = text)
+```
+
+We grouped the question and answer turns separately by callID and collapsed their text into two large blocks per call — one for the first ten questions, and one for the first ten answers. This produced a tidy dataset where each row represents a full earnings call, and the columns contain the aggregated question and answer text. This structure enables us to treat each earnings call as a single document for downstream text modeling.
+
+## Predicting EPS from Q&A Text: Unigrams and Bigrams Analysis
+
+```{r, fig.align='center'}
+spacyr::spacy_initialize() 
+set.seed(2022)
+```
+
+```{r, fig.align='center'}
+lemma_df <- qa_10 %>%
+  pivot_longer(cols = c(question, answer), names_to = "type", values_to = "text") %>%
+  mutate(doc_id = paste0(callID, "_", type))
+```
+
+```{r, fig.align='center'}
+parsed <- spacy_parse(set_names(lemma_df$text, lemma_df$doc_id), lemma = TRUE)
+```
+
+```{r, fig.align='center'}
+lemma_texts <- parsed %>%
+  group_by(doc_id) %>%
+  summarise(text = paste(lemma, collapse = " "), .groups = "drop")
+
+lemma_df_wide <- lemma_texts %>%
+  separate(doc_id, into = c("callID", "type"), sep = "_") %>%
+  pivot_wider(names_from = type, values_from = text)
+
+lemma_df_wide <- lemma_df_wide %>%
+  select(callID, question, answer)
+```
+To prepare the Q&A text data for predictive modeling, we first lemmatized the content of the first ten questions and answers from each earnings call. Using the `spacyr` package, we tokenized and transformed each word into its lemma (base form). This process preserves semantic meaning while reducing inflected word forms, thus improving model generalization.
+
+Each document was assigned a unique `doc_id` combining the call identifier (`callID`) and the text type (question or answer). After parsing, we reconstructed the lemmatized tokens into single strings for each document. We then separated the `doc_id` back into `callID` and type, and pivoted the data into a wide format with one row per call, and separate columns for lemmatized questions and answers. This structure is essential for building feature matrices and training separate models for each type of input text.
+
+```{r, fig.align='center'}
+dfm_q <- TAB_dfm(lemma_df_wide$question, ngrams = 1:2, stem = FALSE)
+dfm_a <- TAB_dfm(lemma_df_wide$answer, ngrams = 1:2, stem = FALSE)
+```
+
+```{r, fig.align='center'}
+eps_vec <- ecMain %>%
+  filter(callID %in% lemma_df_wide$callID) %>%
+  arrange(match(callID, lemma_df_wide$callID)) %>%
+  pull(EPS_actual)
+```
+
+```{r, fig.align='center'}
+mod_q <- glmnet::cv.glmnet(x = dfm_q, y = eps_vec, alpha = 1)
+mod_a <- glmnet::cv.glmnet(x = dfm_a, y = eps_vec, alpha = 1)
+```
+
+To evaluate which linguistic features of the Q&A content predict actual earnings per share (EPS), we trained two LASSO regression models. First, we matched each row in the document-feature matrices with the corresponding EPS_actual values from the main earnings call dataset. Then, we trained one model using features extracted from the lemmatized questions, and another using the answers. 
+
+```{r, fig.align='center', echo=FALSE}
+plot_top_ngrams <- function(model, title) {
+  coefs <- coef(model, s = "lambda.min")
+  coefs <- as.matrix(coefs)
+  coefs_df <- data.frame(
+    term = rownames(coefs),
+    coef = as.numeric(coefs)
+  ) %>%
+    filter(term != "(Intercept)" & coef != 0) %>%
+    arrange(desc(abs(coef))) %>%
+    slice_head(n = 20) %>%
+    mutate(direction = ifelse(coef > 0, "positive", "negative"))
+
+  ggplot(coefs_df, aes(x = reorder(term, coef), y = coef, fill = direction)) +
+    geom_col() +
+    coord_flip() +
+    scale_fill_manual(values = c("positive" = "cyan3", "negative" = "coral2")) +
+    labs(title = title, x = "Ngram", y = "Coefficient", fill = "Direction") 
+}
+
+plot_top_ngrams(mod_q, "Top Predictive Ngrams from Questions")
+plot_top_ngrams(mod_a, "Top Predictive Ngrams from Answers")
+```
+The two LASSO models reveal distinct patterns in the linguistic features that are predictive of a company’s actual earnings per share (EPS).
+
+In the question-based model, several positively associated ngrams suggest that analyst questions referencing specific people or market-related terms (e.g. `apple`, `peter`, `steve_just`, `new_market`) are indicative of higher-than-expected EPS. The inclusion of `apple` and `steve_just` likely refers to the company Apple and its leadership, which may reflect positive sentiment or optimism surrounding the company, indicating strong performance. These terms may signal more optimistic or forward-looking inquiries. However, negatively associated ngrams like `burn`, `worth`, or `engine` may signal concern or uncertainty, and possibly also relate to engine as an industry term, potentially aligning with lower EPS outcomes. Interestingly, the term `apple_apple` also appears among the negative coefficients, with the strongest effect on EPS. This contradicts the earlier positive association with Apple, suggesting that there may be ambiguity in how this term is interpreted in different contexts.
+
+In the answer-based model, positively weighted terms such as `deceleration`, `find_opportunity`, and `great_product` suggest that when executives speak directly about opportunities, innovation, or product strength, these are often associated with better earnings results. Notably, `deceleration` has the most impactful positive coefficient here (it also appears positively in the question-based model), implying that when companies proactively acknowledge slowing trends, it can build investor trust. We also observe the recurrence of certain terms that appeared as top predictive ngrams in the question-based model, such as `peter` and `ipad`, which likely relate to Apple. Negative terms like `say_comment` or `really_first` might indicate vague or deflective language, potentially raising red flags about the company’s performance.
+
+## Testing Transfer Learning Between Question and Answer Models
+
+Next, we evaluate the accuracy of the two models trained earlier. This includes both in-context evaluation—testing the question-based model on question data and the answer-based model on answer data—and cross-context transfer learning, where we apply the question-based model to answer data and the answer-based model to question data. This comparison helps assess how well the models generalize across different types of conversational input.
+
+We began by performing a train-test split, randomly assigning 80% of the `lemma_df_wide` data to the training set and the remaining 20% to the test set. We also matched the `EPS_actual` values from `ecMain` to each subset using their `callID`, ensuring that our prediction target variable (`eps_train` and `eps_test`) aligned correctly with the corresponding document-feature matrices.
+
+```{r, fig.align='center'}
+set.seed(2022)
+train_split <- sample(1:nrow(lemma_df_wide), size = 0.8 * nrow(lemma_df_wide))
+
+train_data <- lemma_df_wide[train_split, ]
+test_data <- lemma_df_wide[-train_split, ]
+
+eps_train <- ecMain %>%
+  filter(callID %in% train_data$callID) %>%
+  arrange(match(callID, train_data$callID)) %>%
+  pull(EPS_actual)
+
+eps_test <- ecMain %>%
+  filter(callID %in% test_data$callID) %>%
+  arrange(match(callID, test_data$callID)) %>%
+  pull(EPS_actual)
+```
+
+```{r, fig.align='center'}
+dfm_q_train <- TAB_dfm(train_data$question, ngrams = 1:2, stem = FALSE) %>%
+  convert(to = "matrix")
+
+dfm_a_train <- TAB_dfm(train_data$answer, ngrams = 1:2, stem = FALSE) %>%
+  convert(to = "matrix")
+
+mod_q_train <- glmnet::cv.glmnet(x = dfm_q_train, y = eps_train, alpha = 1)
+mod_a_train <- glmnet::cv.glmnet(x = dfm_a_train, y = eps_train, alpha = 1)
+```
+
+Next, we built document-feature matrices for both the question and answer texts using unigrams and bigrams. For testing, we matched the test DFMs to the training vocabulary using `dfm_match()` and setting `min.prop = 0` to ensure all features from training are retained. For cross-context predictions, where the model trained on one text type is tested on the other, we created matched DFMs again using `dfm_match()` to ensure dimensional consistency between training and testing matrices.
+
+```{r, fig.align='center'}
+dfm_q_test <- TAB_dfm(test_data$question, ngrams = 1:2, stem = FALSE, min.prop = 0) %>%
+  dfm_match(colnames(dfm_q_train)) %>%
+  convert(to = "matrix")
+
+dfm_a_test <- TAB_dfm(test_data$answer, ngrams = 1:2, stem = FALSE, min.prop = 0) %>%
+  dfm_match(colnames(dfm_a_train)) %>%
+  convert(to = "matrix")
+
+dfm_q_test_matched <- TAB_dfm(test_data$question, ngrams = 1:2, stem = FALSE, min.prop = 0) %>%
+  dfm_match(colnames(dfm_a_train)) %>%
+  convert(to = "matrix")
+
+dfm_a_test_matched <- TAB_dfm(test_data$answer, ngrams = 1:2, stem = FALSE, min.prop = 0) %>%
+  dfm_match(colnames(dfm_q_train)) %>%
+  convert(to = "matrix")
+```
+
+We then performed predictions on both in-context and cross-context scenarios. 
+
+```{r, fig.align='center'}
+# In-context predictions
+pred_q_on_q <- predict(mod_q_train, newx = dfm_q_test, s = "lambda.min")[,1]
+pred_a_on_a <- predict(mod_a_train, newx = dfm_a_test, s = "lambda.min")[,1]
+
+# Cross-context predictions
+pred_q_on_a <- predict(mod_q_train, newx = dfm_a_test_matched, s = "lambda.min")[,1]
+pred_a_on_q <- predict(mod_a_train, newx = dfm_q_test_matched, s = "lambda.min")[,1]
+
+acc_q_on_q <- kendall_acc(pred_q_on_q, eps_test)
+acc_a_on_a <- kendall_acc(pred_a_on_a, eps_test)
+acc_q_on_a <- kendall_acc(pred_q_on_a, eps_test)
+acc_a_on_q <- kendall_acc(pred_a_on_q, eps_test)
+```
+
+Finally, we computed Kendall's Tau rank correlation along with a confidence interval. This allows us to compare predictive performance not only within contexts but also across them, capturing how transferable the models are when applied to a different type of textual input.
+
+## Cross-Evaluation of Question and Answer Models
+
+We evaluate each model in two contexts. First, the in-context evaluation tests how well the question-trained model performs on question data and how well the answer-trained model performs on answer data. This reflects the models' performance on the type of data they were trained on and serves as a baseline. Second, we perform a cross-context or transfer learning evaluation. This involves applying the question-trained model to answer data, and vice versa. This setup helps us understand whether features learned from one type of communication (e.g., questions) are also predictive when applied to the other (e.g., answers). It provides insight into the linguistic overlap or divergence between the two text types in terms of their relationship to EPS prediction.
+
+```{r, fig.align='center', echo=FALSE}
+accuracy_df <- data.frame(
+  Predicted_On = c("Questions", "Answers"),
+  Trained_On_Questions = c(acc_q_on_q$acc, acc_q_on_a$acc),
+  Trained_On_Answers  = c(acc_a_on_q$acc, acc_a_on_a$acc)
+)
+
+accuracy_df %>%
+  knitr::kable(format = "latex") %>%
+  kableExtra::kable_styling(latex_options = c("striped", "hover", "condensed"), 
+                            full_width = FALSE, font_size = 11)
+```
+
+In-context evaluations show that the question-based model performs best when tested on question data (60.80%), and the answer-based model performs best on answer data (61.66%), as expected. These represent the diagonal elements in the matrix, where each model is evaluated on the same type of text it was trained on. Cross-context evaluations yield slightly lower accuracy scores (59.96% and 59.75%, respectively), though the drop is not as substantial as one might expect. Still, this suggests that while there is some predictive overlap between question and answer texts, the models still perform best within their original training context.
+
+```{r, fig.align='center', echo=FALSE}
+bind_rows(
+  acc_q_on_q %>% mutate(test = "Question", train = "Question Model"),
+  acc_a_on_a %>% mutate(test = "Answer", train = "Answer Model"),
+  acc_q_on_a %>% mutate(test = "Answer", train = "Question Model"),
+  acc_a_on_q %>% mutate(test = "Question", train = "Answer Model")
+) %>%
+  ggplot(aes(x = test, y = acc, ymin = lower, ymax = upper, color = test)) +
+  geom_point() +
+  geom_errorbar(width = 0.3) +
+  facet_wrap(~train) +
+  labs(x = "Test Data", y = "Kendall Accuracy", title = "Model Accuracy with Confidence Intervals") +
+  geom_hline(yintercept = 50, linetype = "dashed") +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        strip.text = element_text(size = 14),
+        legend.position = "none", 
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5))
+```
+The corresponding plot presents these findings visually, with each point representing the Kendall accuracy and its 95% confidence interval. Cross-context predictions show a slight drop in accuracy but do not exhibit noticeably wider intervals.
+
+# Politeness Features in Q&A: Understanding the Textual Difference
+
+Now, we focus on extracting and analyzing politeness features from the question and answer texts. The politeness features are extracted using the politeness function with the spacy parser.
+
+```{r, fig.align='center'}
+polite_df <- lemma_df_wide %>%
+  pivot_longer(cols = c(question, answer), names_to = "type", values_to = "text") %>%
+  mutate(doc_id = paste0(callID, "_", type))
+```
+
+```{r, fig.align='center'}
+polite_feats <- politeness(polite_df$text, parser = "spacy")
+```
+
+```{r, fig.align='center'}
+polite_feats_final <- polite_feats %>%
+  mutate(doc_id = polite_df$doc_id, type = polite_df$type)
+```
+
+```{r, fig.align='center'}
+sparse_thresh <- 0.1 * nrow(polite_feats_final)
+polite_feats_filtered <- polite_feats_final[, colSums(polite_feats_final != 0) >= sparse_thresh]
+```
+
+To focus on meaningful features, a sparse threshold is applied, removing features that occur in less than 10% of calls. The differences in mean politeness values between questions and answers are then calculated, and the top 20 features with the highest absolute differences are selected.
+
+```{r, fig.align='center'}
+polite_long <- polite_feats_filtered %>%
+  mutate(doc_id = rownames(.)) %>%
+  pivot_longer(-c(doc_id, type), names_to = "feature", values_to = "value") %>%
+  group_by(feature, type) %>%
+  summarise(mean_value = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = type, values_from = mean_value) %>%
+  mutate(diff = question - answer) %>%
+  filter(!is.na(diff)) %>%
+  slice_max(abs(diff), n = 20)
+```
+
+```{r, fig.align='center', echo=FALSE}
+ggplot(polite_long, aes(x = feature, y = question, fill = "Question")) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7, alpha = 0.7) +
+  geom_bar(aes(y = answer, fill = "Answer"), stat = "identity", position = "dodge", width = 0.7, alpha = 0.7) +
+  coord_flip() + 
+  labs(
+    title = "Politeness Feature Comparison: Questions vs Answers",
+    x = "Politeness Features",
+    y = "Average Value",
+    fill = "Type"
+  ) +
+  scale_fill_manual(values = c("Question" = "cyan3", "Answer" = "coral2")) +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size = 14, hjust = 0.5, face = "bold"),
+        legend.position = "bottom")
+```
+From the analysis of the politeness feature differences between questions and answers, we observe some notable trends. The features with the largest differences are those reflecting more formal and detached language, such as first-person plural and impersonal pronouns, which are predominantly more common in answers than in questions. This indicates that answers tend to be more formal and structured, often involving more general statements or shared experiences, likely reflective of the way answers often address a broader audience or offer explanations.
+
+On the other hand, features that suggest direct engagement, like second-person pronouns and yes/no questions, are more prominent in questions. This reflects the more personal and direct nature of questions, where engagement with the recipient is often more pronounced.
+
+Other notable differences include the use of hedges, reasoning, and negation, which are more frequent in answers. Hedges and reasoning reflect the cautious and explanatory tone often used when providing answers, while negation highlights the clarifications or corrections that are commonly necessary in responses.
+
+Overall, the data shows that answers are generally more formal and structured, using features that involve clarification and explanation, while questions tend to focus on directness, engagement, and the expression of curiosity or inquiry.
+
+## Predicting Text Type: Question vs. Answer
+
+In this section, a LASSO model is trained to predict whether a turn is a question or an answer based on politeness features. The feature matrix (`X`) is created by selecting relevant features and excluding unnecessary columns. The target variable (`y`) is set to 1 for questions and 0 for answers.
+
+```{r, fig.align='center'}
+X <- polite_feats_filtered %>%
+  select(-doc_id, -type) %>%
+  as.matrix()
+
+y <- ifelse(polite_feats_filtered$type == "question", 1, 0)  
+
+lasso_polite <- cv.glmnet(x = X, y = y, family = "binomial", alpha = 1)
+```
+
+```{r, fig.align='center', echo=FALSE}
+plot_data <- coef(lasso_polite, s = "lambda.min") %>%
+  drop() %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "feature") %>%
+  rename(score = ".") %>%
+  filter(score != 0 & feature != "(Intercept)" & !is.na(score)) %>%
+  left_join(data.frame(
+    feature = colnames(X),  
+    freq = colMeans(X)
+  ), by = "feature")
+
+plot_data <- plot_data %>%
+  mutate(across(c(score, freq), round, 3))
+
+ggplot(plot_data, aes(x = score, y = freq, label = feature, color = score)) +
+  scale_color_gradient(low = "coral2", high = "cyan3") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_point() +
+  geom_label_repel(max.overlaps = 30, force = 6) +
+  scale_y_continuous(trans = "log2", breaks = c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)) +
+  theme_bw() +
+  labs(
+    title = "Politeness Features Predicting Question vs Answer",
+    x = "LASSO Model Coefficient",
+    y = "Average Feature Frequency (Log2 Scale)"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16)
+  )
+```
+From the plot, we can observe that features such as "Impersonal Pronoun," "First Person Plural," and "Second Person" have negative coefficients and higher average frequencies, suggesting they are more prominent in answers. This likely reflects the use of more formal and impersonal language in answers.
+
+On the other hand, features like "YesNo Questions" and "WH Questions" have higher coefficients for questions, as expected. These features, representing yes/no and WH-type questions (e.g., who, what, where), play a significant role in identifying questions. Additionally, features like "Can.You" and "Could.You" have lower coefficients, indicating they have a smaller impact on distinguishing between questions and answers but still lean towards being more frequent in questions.
+
+Overall, the plot reveals that formal language markers such as first-person plural and impersonal pronouns are more frequent in answers, while more direct and engaging features like question types (yes/no and WH) are more common in questions. 
+
+# Classifying Quarter Based on Answers
+
+Finally, we predict quarter of earnings call by extracting the first five answers from each call in the `ecQA` dataset and filtering for the asker's responses. We then join this subset with the `ecMain` dataset to add Fiscal Quarter (FQ) information. The dataset is split into training (80%) and test (20%) sets for model evaluation.
+
+The text data is tokenized into unigrams and bigrams, creating DFMs for both training and test sets. The cv.glmnet() function is then used to train a multinomial logistic regression model, predicting the Fiscal Quarter based on the text data. Cross-validation is applied to optimize the regularization parameter, ensuring the model generalizes well to unseen data.
+
+This process prepares the data, generates features, and trains a multinomial model to predict the fiscal quarter from text features, setting up the next step for performance evaluation on the test data.
+
+```{r}
+first_five_answers <- ecQA %>%
+  filter(asker == 0) %>%  
+  group_by(callID) %>%
+  slice(1:5) %>%
+  ungroup()
+```
+
+```{r}
+ans_fq <- first_five_answers %>%
+  left_join(ecMain, by = "callID") %>%
+  select(callID, text, FQ)
+```
+
+```{r}
+train_split2 <- sample(1:nrow(ans_fq), size = 0.8 * nrow(ans_fq))
+```
+
+```{r}
+train_data2 <- ans_fq[train_split2, ]
+test_data2 <- ans_fq[-train_split2, ]
+```
+
+```{r}
+categ_dfm_train <- TAB_dfm(train_data2$text, ngrams=1:2)
+
+categ_dfm_test <- TAB_dfm(test_data2$text, ngrams=1:2,min.prop=0) %>%
+  dfm_match(colnames(categ_dfm_train))
+```
+
+The text data is tokenized into unigrams and bigrams, creating DFMs for both training and test sets. The `cv.glmnet()` function is then used to train a multinomial logistic regression model, predicting the Fiscal Quarter based on the text data. Cross-validation is applied to optimize the regularization parameter, ensuring the model generalizes well to unseen data.
+
+```{r}
+categ_model <- glmnet::cv.glmnet(x = categ_dfm_train,
+                                 y = train_data2$FQ,
+                                 family = "multinomial")
+```
+
+```{r, echo=FALSE}
+plot(categ_model)
+```
+The results show that the deviance is lowest around log(λ) ≈ -6, as indicated by the dotted vertical lines. This suggests that the optimal regularization parameter λ falls within this range, where the model achieves the best fit without overfitting or underfitting the data. The deviance increases as λ moves away from this optimal range, with larger values of λ leading to higher deviance, indicating that stronger regularization negatively impacts model performance. The confidence intervals around the deviance values are narrow, suggesting that the chosen λ range is relatively stable and offers consistent performance across different splits of the data. This implies that the model is well-tuned within this region, balancing complexity and generalization effectively.
+
+## Accuracy Evaluations 
+
+```{r}
+categ_predict_label <- predict(categ_model,
+                            newx = categ_dfm_test,
+                            type="class")[,1]
+categ_predict_label <- as.factor(categ_predict_label)
+```
+
+```{r}
+conf_matrix <- confusionMatrix(categ_predict_label, as.factor(test_data2$FQ))
+conf_matrix
+```
+
+```{r, include=FALSE}
+conf_matrix_df <- as.data.frame.matrix(conf_matrix$table)
+
+colnames(conf_matrix_df) <- paste("Predicted", colnames(conf_matrix_df), sep = " ")
+conf_matrix_df$Actual <- rownames(conf_matrix_df)
+
+kable(conf_matrix_df, 
+      caption = "Confusion Matrix", 
+      col.names = c("Predicted 1", "Predicted 2", "Predicted 3", "Predicted 4", "Actual"), 
+      format = "latex") %>%
+  kableExtra::kable_styling(latex_options = c("striped", "hover", "condensed"), 
+                            full_width = FALSE) %>%
+  kableExtra::column_spec(1:4, border_right = TRUE) %>%
+  kableExtra::row_spec(0, bold = TRUE)
+```
+The most common errors occur when Quarter 3 is misclassified as Quarter 4, Quarter 2, and Quarter 1, with 1470, 1645, and 1403 incorrect predictions, respectively. These errors suggest that the model struggles to classify Quarter 1, Quarter 2, and Quarter 4 correctly, likely due to overlapping features in the text data.
+
+```{r}
+accuracy_4class <- mean(categ_predict_label == test_data2$FQ)
+print(paste("Accuracy for 4 classes: ", accuracy_4class))
+```
+
+The multinomial logistic regression model achieved an accuracy of approximately 37.1% in predicting the fiscal quarter (FQ) across all four categories. This relatively low accuracy indicates that the model is not performing optimally and struggles to correctly classify the quarter in most cases. While this accuracy provides some insight into the model’s performance, there is considerable room for improvement.
+
+```{r, echo=FALSE}
+accuracy_per_class <- sapply(1:4, function(i) {
+  indices <- which(test_data2$FQ == i)
+  
+  accuracy <- mean(categ_predict_label[indices] == i)
+  
+  return(accuracy)
+})
+
+accuracy_per_class_df <- data.frame(
+  Quarter = 1:4,
+  Accuracy = accuracy_per_class
+)
+
+accuracy_per_class_df %>%
+  knitr::kable(format = "latex") %>%
+  kableExtra::kable_styling(latex_options = c("striped", "hover", "condensed"), 
+                            full_width = FALSE, font_size = 11)
+```
+The model's accuracy for each quarter (1 through 4) has been calculated and displayed in a table. For Quarter 1, the accuracy is approximately 29.64%, for Quarter 2 it is 26.69%, for Quarter 3 it is 66.27%, and for Quarter 4 it is 21.29%.
+
+The results show a high accuracy for Quarter 3 compared to the other quarters, with a significant drop in performance for the first, second, and fourth quarters. This suggests that the model is better at predicting Quarter 3, but struggles with the other quarters, particularly Quarter 4, where accuracy is the lowest. 
+
+```{r}
+binary_predictions <- ifelse(categ_predict_label == 1, 1, 0)
+binary_true_labels <- ifelse(test_data2$FQ == 1, 1, 0)
+
+binary_accuracy <- mean(binary_predictions == binary_true_labels)
+
+print(paste("Binary accuracy (Q1 vs Other): ", binary_accuracy))
+```
+The model's binary accuracy for distinguishing between Quarter 1 and other quarters is approximately 73.1%. This indicates that the model is correctly classifying whether a call is from the first quarter or not in about 73% of the cases.
+
+This performance suggests that the model is somewhat effective at identifying calls from Quarter 1, but there is still room for improvement. While a binary accuracy of 73% is relatively strong, further model optimization, additional features, or a more complex model may help improve the accuracy and reduce errors, especially for the less well-predicted quarters.
+
+# Conclusion
+
+This project demonstrates how text analytics can uncover meaningful patterns in earnings call transcripts and connect language use to financial outcomes. LASSO regression models using bigrams and word embeddings showed strong predictive power in estimating a company’s earnings per share (EPS), with bigram features achieving the highest accuracy. Combining lexical and semantic features offered a balanced and interpretable model, outperforming simple baselines like sentiment or word count.
+
+Politeness analysis revealed clear stylistic differences between analyst questions and executive answers, with answers being more formal and impersonal. Predictive modeling further confirmed that these differences are systematic and can be used to classify text type with high accuracy. Additionally, we found that the linguistic patterns in earnings calls evolve only slightly across quarters, with notable consistency in speech content year over year.
+
+Finally, while classifying fiscal quarters based on early responses showed moderate success in distinguishing Quarter 3, results suggest that more refined features or alternative modeling techniques are needed for better multi-class performance.
+
+Overall, this project illustrates the value of natural language processing in financial communication, supporting decision-making with data-driven insights into tone, structure, and meaning in corporate discourse.
