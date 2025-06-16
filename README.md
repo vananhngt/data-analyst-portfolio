@@ -8,6 +8,22 @@ Ever since elementary school, I’ve had a natural interest in numbers. During m
 
 I’m a curious and determined person, quick to learn and passionate about continuous growth. Whatever I commit to, I follow through with dedication and focus. I hope this portfolio reflects some of that energy and passion: it showcases selected projects from my master’s studies and tracks my progress across data analytics and data science topics.
 
+
+## Table of Contents
+
+- [About](#about)
+- [Portfolio Projects](#portfolio-projects)
+  - [Python](#python)
+    - [Organizational Communication Network Analysis](#organizational-communication-network-analysis)
+    - [Data-Driven Customer Segmentation: A Clustering Approach](#data-driven-customer-segmentation-a-clustering-approach)
+  - [R](#r)
+    - [Titanic Survival Analysis](#titanic-survival-analysis)
+    - [Decoding Yelp Success in Las Vegas](#decoding-yelp-success-in-las-vegas)
+    - [Lettuce Demand Forecasting for a Fast-Food Restaurant Chain](#lettuce-demand-forecasting-for-a-fast-food-restaurant-chain)
+  - [SQL](#sql)
+    - [Customer Insights & Operational Analytics with SQL](#customer-insights--operational-analytics-with-sql)
+
+
 ## Portfolio Projects
 
 ### Python
