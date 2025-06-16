@@ -36,6 +36,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
 
 - **Results & Insights:** The analysis revealed meaningful customer clusters, with income and score proving to be strong discriminators. Gender distribution within clusters helped interpret demographic differences. Hierarchical clustering on the noisy dataset highlighted how noise can obscure segment boundaries. Including gender as a feature was found to slightly refine segmentation. These insights could support personalized marketing and improved targeting strategies.
 
+- **Deliverables:**
+  - [Customer Segmentation HTML](https://vananhngt.github.io/data-analyst-portfolio/Customer_Segmentation.html)
 
 
 
