@@ -88,5 +88,20 @@ I’m a curious and determined person, quick to learn and passionate about conti
   - [Lettuce Demand Forecasting.Rmd](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Lettuce%20Demand%20Forecasting.Rmd)
 
 
+### SQL 
+
+#### Customer Insights & Operational Analytics with SQL
+
+**Goal:** Analyze customer behavior, film rentals, and staff/store performance using SQL techniques on a real-world database schema.
+
+**Description:** This project involved analyzing a relational film rental database to uncover insights into customer behavior, rental trends, staff performance, and genre popularity. Through a series of structured SQL queries, we applied techniques such as joins, common table expressions (CTEs), aggregations, filters, and window functions to answer real-world business questions. Key focus areas included identifying each customer's most-watched genre, evaluating which staff members generated the most rentals, and determining top-performing films by store.
+
+**Skills / Tools Used:** SQL (PostgreSQL syntax), ER diagrams, CTEs, subqueries, joins, analytic functions
+
+**Results & Insights:** We identified the most-watched film genres for each customer, enabling personalized marketing strategies. By leveraging window functions, we tracked cumulative payments and rental activity over time, offering a dynamic view of customer engagement. Additionally, we pinpointed the top-rented films in each store, informing inventory and promotional decisions. The queries also uncovered customers with incomplete transactions, highlighting potential issues in the payment process that could be addressed to improve operational efficiency.
+
+**Deliverables:**
+
+
 
 
