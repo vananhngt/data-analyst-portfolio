@@ -37,7 +37,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 - **Description:**  Based on email exchange data, two directed networks were constructed — one representing messages sent and the other representing messages received. The analysis aimed to distinguish individuals who actively initiate communication (opinion-makers) from those who are frequently contacted (leaders), while also uncovering deeper structural insights into the cohort’s communication dynamics.
 
-- **Skills / Tools Used:**  Python (NetworkX, pandas), graph construction, centrality metrics (degree, eigenvector, betweenness, closeness), clustering coefficient, data cleaning 
+- **Skills / Tools Used:**  Python (NetworkX, pandas), entrality metrics (degree, eigenvector, betweenness, closeness), clustering coefficient, data cleaning 
 
 - **Results & Insights:**  The analysis identified individuals who actively initiated conversations, as well as those frequently sought out and trusted by others. A key individual was found to serve as a connector between two distinct clusters, highlighting a bridging role across subgroups. Overall, the communication structure appeared decentralized, with influence distributed among multiple prominent figures rather than concentrated in a single leader.
 
@@ -51,7 +51,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 - **Description:** This project involved applying K-means and hierarchical clustering techniques on two customer datasets—one clean and one with added noise. The clean dataset included demographic features such as age, income, and score, while the noisy dataset included four additional synthetic features. Z-score normalization was applied to numerical variables, followed by experimentation with different feature combinations. Cluster quality was evaluated using heuristic methods, and visualizations were used to interpret the clusters and explore the influence of gender.
 
-- **Skills / Tools Used:** Python (scikit-learn, pandas, seaborn, matplotlib), data visualization
+- **Skills / Tools Used:** Python (scikit-learn, pandas, seaborn, matplotlib)
 
 - **Results & Insights:** The analysis revealed meaningful customer clusters, with income and score proving to be strong discriminators. Gender distribution within clusters helped interpret demographic differences. Hierarchical clustering on the noisy dataset highlighted how noise can obscure segment boundaries. Including gender as a feature was found to slightly refine segmentation. These insights could support personalized marketing and improved targeting strategies.
 
@@ -98,7 +98,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 - **Description:** This project involved end-to-end forecasting of lettuce consumption using internal transactional data from a fast-food restaurant chain. Multiple datasets—including POS transactions, recipes, ingredients, and store metadata—were merged to compute daily lettuce usage. A robust preprocessing pipeline standardized units and connected sub-recipes to main recipes. Time series models (ETS and ARIMA) were applied to forecast 14-day demand at store level, followed by model comparison and selection per location.
 
-- **Skills / Tools Used:** R (tidyverse, forecast, tseries, ggplot2, patchwork), time series modeling (ETS, ARIMA), data wrangling, 
+- **Skills / Tools Used:** R (tidyverse, forecast, tseries, ggplot2, patchwork), time series modeling (ETS, ARIMA), data wrangling
 
 - **Results & Insights:** Holt-Winters and ARIMA models were evaluated side-by-side across four stores. ETS(A,N,A) outperformed others in two cases due to its adaptability to seasonal patterns, while ARIMA models yielded stronger accuracy in stores with noisier demand. Each store was assigned its optimal model, and forecasts were compiled into a daily table to support operational decisions. The project demonstrated how integrated data and time series methods can drive ingredient-level forecasting for improved supply chain efficiency.
 
