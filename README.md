@@ -16,7 +16,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 - [Portfolio Projects](#portfolio-projects)
   - [Python](#python)
     - [Organizational Communication Network Analysis](#organizational-communication-network-analysis)
-    - [Data-Driven Customer Segmentation: A Clustering Approach](#data-driven-customer-segmentation-a-clustering-approach)
+    - [Data-Driven Customer Segmentation](#data-driven-customer-segmentation)
   - [R](#r)
     - [Titanic Survival Analysis](#titanic-survival-analysis)
     - [Decoding Yelp Success in Las Vegas](#decoding-yelp-success-in-las-vegas)
@@ -46,7 +46,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
   - [Organizational Network Analysis.ipynb](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Organizational%20Network%20Analysis/Organizational%20Network%20Analysis.ipynb)
 
 
-#### Data-Driven Customer Segmentation: A Clustering Approach
+#### Data-Driven Customer Segmentation
 - **Goal:** To identify distinct customer segments based on demographic and behavioral data using clustering algorithms, and evaluate the effect of feature selection and noise on cluster quality.
 
 - **Description:** This project involved applying K-means and hierarchical clustering techniques on two customer datasets—one clean and one with added noise. The clean dataset included demographic features such as age, income, and score, while the noisy dataset included four additional synthetic features. Z-score normalization was applied to numerical variables, followed by experimentation with different feature combinations. Cluster quality was evaluated using heuristic methods, and visualizations were used to interpret the clusters and explore the influence of gender.
