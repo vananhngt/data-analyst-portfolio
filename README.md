@@ -106,6 +106,20 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
   - [Lettuce Demand Forecasting.html](https://vananhngt.github.io/data-analyst-portfolio/Lettuce_Demand_Forecasting.html)
   - [Lettuce Demand Forecasting.Rmd](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Lettuce%20Demand%20Forecasting.Rmd)
 
+#### Text Analytics on Earnings Calls
+
+- **Goal:** Analyze earnings call transcripts to predict earnings performance, assess politeness in Q&A exchanges, and classify transcripts by fiscal quarter using text-based features.
+
+- **Description:** This project applied multiple text analytics techniques to a dataset of earnings call transcripts. The objectives included predicting whether a company would meet EPS targets using LASSO models with features like ngrams and word embeddings, comparing question and answer styles based on politeness markers, and building a multinomial classifier to predict the quarter of a transcript based on early answers. Advanced text processing techniques such as tokenization, DFM creation, feature engineering, and embedding-based similarity were combined to extract and analyze linguistic patterns in financial communication.
+
+- **Skills / Tools Used:** R (text2vec, quanteda, spacyr, glmnet, tidymodels), text preprocessing, LASSO regression, Word2Vec embeddings
+
+- **Results & Insights:** The analysis showed that LASSO models combining ngram and Word2Vec features outperformed benchmark methods in predicting both disputed complaints and earnings-per-share (EPS) outcomes. Politeness analysis revealed statistically significant differences in the phrasing of questions and answers, offering valuable insight into the conversational dynamics of earnings calls. Additionally, a multinomial classification model accurately predicted the fiscal quarter of a transcript, highlighting temporal patterns in language usage.
+
+- **Deliverables:**
+  - [Text Analytics on Earnings Calls.pdf](link-to-pdf)
+  - [Text Analytics on Earnings Calls.Rmd](link-to-rmd)
+
 
 ### SQL 
 
