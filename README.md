@@ -70,7 +70,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Results & Insights:** Holt-Winters and ARIMA models were evaluated side-by-side across four stores. ETS(A,N,A) outperformed others in two cases due to its adaptability to seasonal patterns, while ARIMA models yielded stronger accuracy in stores with noisier demand. Each store was assigned its optimal model, and forecasts were compiled into a daily table to support operational decisions. The project demonstrated how integrated data and time series methods can drive ingredient-level forecasting for improved supply chain efficiency.
 
 - **Deliverables:**
-
+  - [Lettuce Demand Forecasting HTML Report](https://vananhngt.github.io/data-analyst-portfolio/Lettuce_Demand_Forecasting.html)
+  - [Lettuce Demand Forecasting R Code](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Lettuce%20Demand%20Forecasting.Rmd)
 
 
 
