@@ -21,7 +21,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
     - [Titanic Survival Analysis](#titanic-survival-analysis)
     - [Decoding Yelp Success in Las Vegas](#decoding-yelp-success-in-las-vegas)
     - [Lettuce Demand Forecasting for a Fast-Food Restaurant Chain](#lettuce-demand-forecasting-for-a-fast-food-restaurant-chain)
-    - [Text Analytics on Earnings Calls](#text_analytics_on_earnings_calls)
+    - [Text Analytics on Earnings Calls](#text-analytics-on-earnings-calls)
   - [SQL](#sql)
     - [Customer Insights & Operational Analytics with SQL](#customer-insights--operational-analytics-with-sql)
   - Tableau
