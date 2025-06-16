@@ -22,6 +22,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
     - [Lettuce Demand Forecasting for a Fast-Food Restaurant Chain](#lettuce-demand-forecasting-for-a-fast-food-restaurant-chain)
   - [SQL](#sql)
     - [Customer Insights & Operational Analytics with SQL](#customer-insights--operational-analytics-with-sql)
+  - Tableau
+  - Power BI
 
 
 ## Portfolio Projects
