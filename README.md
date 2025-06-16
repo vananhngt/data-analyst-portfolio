@@ -8,7 +8,7 @@ Ever since elementary school, I’ve had a natural interest in numbers. During m
 
 I’m a curious and determined person, quick to learn and passionate about continuous growth. Whatever I commit to, I follow through with dedication and focus. I hope this portfolio reflects some of that energy and passion: it showcases selected projects from my master’s studies and tracks my progress across data analytics and data science topics.
 
-Connect with me on [LinkedIn](linkedin.com/in/van-anh-nguyenová](https://www.linkedin.com/in/van-anh-nguyenov%C3%A1). 
+Connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-nguyenov%C3%A1). 
 
 ## Table of Contents
 
