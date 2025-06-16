@@ -42,6 +42,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
 
 - **Deliverables:**
   - [Titanic Survival Analysis HTML Report](https://vananhngt.github.io/data-analyst-portfolio/Titanic-Survival-Analysis.html)
+  - [Titanic Survival Analysis R Code](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Titanic%20Survival%20Analysis.qmd)
+
 
 #### Decoding Yelp Success in Las Vegas
 
