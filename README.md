@@ -27,6 +27,17 @@ I’m a curious and determined person, quick to learn and passionate about conti
   - [Organizational Network Analysis.ipynb](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Organizational%20Network%20Analysis/Organizational%20Network%20Analysis.ipynb)
 
 
+#### Data-Driven Customer Segmentation: A Clustering Approach
+- **Goal:** To identify distinct customer segments based on demographic and behavioral data using clustering algorithms, and evaluate the effect of feature selection and noise on cluster quality.
+
+- **Description:** This project involved applying K-means and hierarchical clustering techniques on two customer datasets—one clean and one with added noise. The clean dataset included demographic features such as age, income, and score, while the noisy dataset included four additional synthetic features. Z-score normalization was applied to numerical variables, followed by experimentation with different feature combinations. Cluster quality was evaluated using heuristic methods, and visualizations were used to interpret the clusters and explore the influence of gender.
+
+- **Skills / Tools Used:** Python (scikit-learn, pandas, seaborn, matplotlib), data visualization
+
+- **Results & Insights:** The analysis revealed meaningful customer clusters, with income and score proving to be strong discriminators. Gender distribution within clusters helped interpret demographic differences. Hierarchical clustering on the noisy dataset highlighted how noise can obscure segment boundaries. Including gender as a feature was found to slightly refine segmentation. These insights could support personalized marketing and improved targeting strategies.
+
+
+
 
 ### R
 
