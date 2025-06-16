@@ -37,7 +37,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Results & Insights:** The analysis revealed meaningful customer clusters, with income and score proving to be strong discriminators. Gender distribution within clusters helped interpret demographic differences. Hierarchical clustering on the noisy dataset highlighted how noise can obscure segment boundaries. Including gender as a feature was found to slightly refine segmentation. These insights could support personalized marketing and improved targeting strategies.
 
 - **Deliverables:**
-  - [Customer Segmentation HTML](https://vananhngt.github.io/data-analyst-portfolio/Customer_Segmentation.html)
+  - [Customer Segmentation.html](https://vananhngt.github.io/data-analyst-portfolio/Customer_Segmentation.html)
+  - [Customer Segmentation.ipynb](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Customer%20Segmentation.ipynb)
 
 
 
@@ -54,8 +55,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Results & Insights:** The analysis revealed that female passengers and children under the age of 10 had significantly higher survival rates. Passengers traveling in small families tended to have better outcomes compared to those traveling alone or in large family groups. Higher ticket fares, often associated with first-class accommodations, were strongly linked to increased chances of survival. Additionally, clear differences were observed in the distributions of age and fare between survivors and non-survivors, highlighting the influence of both demographic and socio-economic factors on survival outcomes.
 
 - **Deliverables:**
-  - [Titanic Survival Analysis HTML Report](https://vananhngt.github.io/data-analyst-portfolio/Titanic-Survival-Analysis.html)
-  - [Titanic Survival Analysis R Code](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Titanic%20Survival%20Analysis.qmd)
+  - [Titanic Survival Analysis.html](https://vananhngt.github.io/data-analyst-portfolio/Titanic-Survival-Analysis.html)
+  - [Titanic Survival Analysis.qmd](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Titanic%20Survival%20Analysis.qmd)
 
 
 #### Decoding Yelp Success in Las Vegas
@@ -69,8 +70,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Results & Insights:** The analysis revealed that brunch and breakfast restaurants showed the highest potential in terms of customer engagement and long-term viability. Among various geographic locations, the Southwest and Southeast regions of Las Vegas emerged as particularly favorable for opening new restaurants. Establishments that demonstrated strong service quality, high food ratings, and active Yelp engagement were found to have a significantly lower risk of closure. These insights supported a data-driven recommendation presented to a simulated client.
 
 - **Deliverables:**
-  - [Decoding Yelp Success in Las Vegas HTML Report](https://vananhngt.github.io/data-analyst-portfolio/Decoding_Yelp_Success_in_Las_Vegas.html)
-  - [Decoding Yelp Success in Las Vegas R Code](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Decoding%20Yelp%20Success%20in%20Las%20Vegas.Rmd)
+  - [Decoding Yelp Success in Las Vegas.html](https://vananhngt.github.io/data-analyst-portfolio/Decoding_Yelp_Success_in_Las_Vegas.html)
+  - [Decoding Yelp Success in Las Vegas.Rmd](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Decoding%20Yelp%20Success%20in%20Las%20Vegas.Rmd)
 
 #### Lettuce Demand Forecasting for a Fast-Food Restaurant Chain
 
@@ -83,8 +84,8 @@ I’m a curious and determined person, quick to learn and passionate about conti
 - **Results & Insights:** Holt-Winters and ARIMA models were evaluated side-by-side across four stores. ETS(A,N,A) outperformed others in two cases due to its adaptability to seasonal patterns, while ARIMA models yielded stronger accuracy in stores with noisier demand. Each store was assigned its optimal model, and forecasts were compiled into a daily table to support operational decisions. The project demonstrated how integrated data and time series methods can drive ingredient-level forecasting for improved supply chain efficiency.
 
 - **Deliverables:**
-  - [Lettuce Demand Forecasting HTML Report](https://vananhngt.github.io/data-analyst-portfolio/Lettuce_Demand_Forecasting.html)
-  - [Lettuce Demand Forecasting R Code](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Lettuce%20Demand%20Forecasting.Rmd)
+  - [Lettuce Demand Forecasting.html](https://vananhngt.github.io/data-analyst-portfolio/Lettuce_Demand_Forecasting.html)
+  - [Lettuce Demand Forecasting.Rmd](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Lettuce%20Demand%20Forecasting.Rmd)
 
 
 
