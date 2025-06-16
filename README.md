@@ -118,8 +118,8 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 - **Results & Insights:** The analysis showed that LASSO models combining ngram and Word2Vec features outperformed benchmark methods in predicting both disputed complaints and earnings-per-share (EPS) outcomes. Politeness analysis revealed statistically significant differences in the phrasing of questions and answers, offering valuable insight into the conversational dynamics of earnings calls. Additionally, a multinomial classification model accurately predicted the fiscal quarter of a transcript, highlighting temporal patterns in language usage.
 
 - **Deliverables:**
-  - [Text Analytics on Earnings Calls.pdf](link-to-pdf)
-  - [Text Analytics on Earnings Calls.Rmd](link-to-rmd)
+  - [Text Analytics on Earnings Calls.pdf](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Text%20Analytics%20on%20Earnings%20Calls/Text%20Analytics%20on%20Earnings%20Calls.pdf)
+  - [Text Analytics on Earnings Calls.Rmd](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Text%20Analytics%20on%20Earnings%20Calls/Text%20Analytics%20on%20Earnings%20Calls.Rmd)
 
 
 ### SQL 
