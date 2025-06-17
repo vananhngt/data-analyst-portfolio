@@ -48,7 +48,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 
 #### Data-Driven Customer Segmentation
-- **Goal:** To identify distinct customer segments based on demographic and behavioral data.
+- **Goal:** Identify distinct customer segments based on demographic and behavioral data.
 
 - **Description:** This project involved applying K-means and hierarchical clustering techniques on two customer datasets: one clean and one with added noise. Z-score normalization was applied to numerical variables, followed by experimentation with different feature combinations. Cluster quality was evaluated using heuristic methods, and visualizations were used to interpret the clusters and explore the influence of gender.
 
