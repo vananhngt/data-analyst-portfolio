@@ -115,7 +115,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 - **Skills / Tools Used:** R (text2vec, quanteda, spacyr, glmnet, tidymodels), text preprocessing, LASSO regression, Word2Vec embeddings
 
-- **Results & Insights:** The analysis showed that LASSO models combining ngram and Word2Vec features outperformed benchmark methods in predicting both disputed complaints and earnings-per-share (EPS) outcomes. Politeness analysis revealed significant differences in the phrasing of questions and answers, offering valuable insight into the conversational dynamics of earnings calls. Additionally, a multinomial classification model predicted the fiscal quarter of a transcript, highlighting temporal patterns in language usage.
+- **Results & Insights:** The analysis showed that LASSO models combining ngram and Word2Vec features outperformed benchmark methods in predicting earnings-per-share (EPS) outcomes. Politeness analysis revealed significant differences in the phrasing of questions and answers, offering valuable insight into the conversational dynamics of earnings calls. Additionally, a multinomial classification model was used to predict the fiscal quarter of a transcript, highlighting temporal patterns in language usage.
 
 - **Deliverables:**
   - [Text Analytics on Earnings Calls.pdf](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Text%20Analytics%20on%20Earnings%20Calls/Text%20Analytics%20on%20Earnings%20Calls.pdf)
