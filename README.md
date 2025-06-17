@@ -48,9 +48,9 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 
 #### Data-Driven Customer Segmentation
-- **Goal:** To identify distinct customer segments based on demographic and behavioral data using clustering algorithms, and evaluate the effect of feature selection and noise on cluster quality.
+- **Goal:** To identify distinct customer segments based on demographic and behavioral data.
 
-- **Description:** This project involved applying K-means and hierarchical clustering techniques on two customer datasets—one clean and one with added noise. The clean dataset included demographic features such as age, income, and score, while the noisy dataset included four additional synthetic features. Z-score normalization was applied to numerical variables, followed by experimentation with different feature combinations. Cluster quality was evaluated using heuristic methods, and visualizations were used to interpret the clusters and explore the influence of gender.
+- **Description:** This project involved applying K-means and hierarchical clustering techniques on two customer datasets: one clean and one with added noise. Z-score normalization was applied to numerical variables, followed by experimentation with different feature combinations. Cluster quality was evaluated using heuristic methods, and visualizations were used to interpret the clusters and explore the influence of gender.
 
 - **Skills / Tools Used:** Python (scikit-learn, pandas, seaborn, matplotlib)
 
@@ -68,7 +68,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 - **Goal:** Explore how factors like gender, age, family size, and socio-economic class influenced passenger survival during the Titanic disaster.
 
-- **Description:** Using the `titanic_train` dataset, this project conducts a thorough exploratory analysis with R.  The study investigates survival patterns based on gender, age, ticket fare, family presence, and class. Key visualizations include bar charts, density plots, ridge plots, and box plots highlighting relationships between features and survival outcomes. A custom variable for family size was introduced and segmented into categories to evaluate its impact.
+- **Description:** Using the `titanic_train` dataset, this project conducts a thorough exploratory analysis with R.  The study investigates survival patterns based on gender, age, ticket fare, family presence, and class. Key visualizations include bar charts, density plots, ridge plots, and box plots highlighting relationships between features and survival outcomes.
 
 - **Skills / Tools Used:** R (ggplot2, dplyr, ggridges), data wrangling, EDA, Quarto
 
@@ -95,9 +95,9 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 #### Lettuce Demand Forecasting for a Fast-Food Restaurant Chain
 
-- **Goal:** Optimize inventory planning by forecasting short-term lettuce demand across multiple restaurant locations using time series models.
+- **Goal:** Optimize inventory planning by forecasting short-term lettuce demand across multiple restaurant locations.
 
-- **Description:** This project involved end-to-end forecasting of lettuce consumption using internal transactional data from a fast-food restaurant chain. Multiple datasets—including POS transactions, recipes, ingredients, and store metadata—were merged to compute daily lettuce usage. A robust preprocessing pipeline standardized units and connected sub-recipes to main recipes. Time series models (ETS and ARIMA) were applied to forecast 14-day demand at store level, followed by model comparison and selection per location.
+- **Description:** This project involved end-to-end forecasting of lettuce consumption using internal transactional data from a fast-food restaurant chain. Multiple datasets, including POS transactions, recipes, ingredients, and store metadata, were merged to compute daily lettuce usage. Time series models (ETS and ARIMA) were applied to forecast 14-day demand at the store level, followed by model comparison and selection per location.
 
 - **Skills / Tools Used:** R (tidyverse, forecast, tseries, ggplot2, patchwork), time series modeling (ETS, ARIMA), data wrangling
 
@@ -109,13 +109,13 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 #### Text Analytics on Earnings Calls
 
-- **Goal:** Analyze earnings call transcripts to predict earnings performance, assess politeness in Q&A exchanges, and classify transcripts by fiscal quarter using text-based features.
+- **Goal:** Analyze earnings call transcripts to predict earnings performance, assess politeness in Q&A exchanges, and classify transcripts by fiscal quarter.
 
-- **Description:** This project applied multiple text analytics techniques to a dataset of earnings call transcripts. The objectives included predicting whether a company would meet EPS targets using LASSO models with features like ngrams and word embeddings, comparing question and answer styles based on politeness markers, and building a multinomial classifier to predict the quarter of a transcript based on early answers. Advanced text processing techniques such as tokenization, DFM creation, feature engineering, and embedding-based similarity were combined to extract and analyze linguistic patterns in financial communication.
+- **Description:** This project applied multiple text analytics techniques to a dataset of earnings call transcripts. The objectives included predicting whether a company would meet EPS targets using LASSO models with features like ngrams and word embeddings, comparing question and answer styles based on politeness markers, and building a multinomial classifier to predict the quarter of a transcript based on early answers. 
 
 - **Skills / Tools Used:** R (text2vec, quanteda, spacyr, glmnet, tidymodels), text preprocessing, LASSO regression, Word2Vec embeddings
 
-- **Results & Insights:** The analysis showed that LASSO models combining ngram and Word2Vec features outperformed benchmark methods in predicting both disputed complaints and earnings-per-share (EPS) outcomes. Politeness analysis revealed statistically significant differences in the phrasing of questions and answers, offering valuable insight into the conversational dynamics of earnings calls. Additionally, a multinomial classification model accurately predicted the fiscal quarter of a transcript, highlighting temporal patterns in language usage.
+- **Results & Insights:** The analysis showed that LASSO models combining ngram and Word2Vec features outperformed benchmark methods in predicting both disputed complaints and earnings-per-share (EPS) outcomes. Politeness analysis revealed significant differences in the phrasing of questions and answers, offering valuable insight into the conversational dynamics of earnings calls. Additionally, a multinomial classification model predicted the fiscal quarter of a transcript, highlighting temporal patterns in language usage.
 
 - **Deliverables:**
   - [Text Analytics on Earnings Calls.pdf](https://github.com/vananhngt/data-analyst-portfolio/blob/main/Text%20Analytics%20on%20Earnings%20Calls/Text%20Analytics%20on%20Earnings%20Calls.pdf)
@@ -126,9 +126,9 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 #### Customer Insights & Operational Analytics with SQL
 
-- **Goal:** Analyze customer behavior, film rentals, and staff/store performance using SQL techniques on a real-world database schema.
+- **Goal:** Analyze customer behavior, film rentals, and staff/store performance on a real-world database schema.
 
-- **Description:** This project involved analyzing a relational film rental database to uncover insights into customer behavior, rental trends, staff performance, and genre popularity. Through a series of structured SQL queries, we applied techniques such as joins, common table expressions (CTEs), aggregations, filters, and window functions to answer real-world business questions. Key focus areas included identifying each customer's most-watched genre, evaluating which staff members generated the most rentals, and determining top-performing films by store.
+- **Description:** This project involved analyzing a relational film rental database to uncover insights into customer behavior, rental trends, staff performance, and genre popularity. Through a series of structured SQL queries, we applied techniques such as joins, common table expressions (CTEs), aggregations, filters, and window functions to answer common business questions. Key focus areas included identifying each customer's most-watched genre, evaluating which staff members generated the most rentals, and determining top-performing films by store.
 
 - **Skills / Tools Used:** SQL (PostgreSQL syntax), CTEs, subqueries, joins
 
