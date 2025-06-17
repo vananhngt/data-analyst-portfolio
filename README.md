@@ -34,7 +34,7 @@ Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/van-anh-n
 
 #### Organizational Communication Network Analysis
 
-- **Goal:**  To identify the leaders and opinion-makers within a student cohort.
+- **Goal:**  Identify the leaders and opinion-makers within a student cohort.
 
 - **Description:**  Based on email exchange data, two directed networks were constructed: one representing messages sent and the other representing messages received. The analysis aimed to distinguish individuals who actively initiate communication (opinion-makers) from those who are frequently contacted (leaders), while also uncovering deeper structural insights into the cohort’s communication dynamics.
 
