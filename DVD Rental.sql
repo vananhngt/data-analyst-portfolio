@@ -228,13 +228,13 @@ HAVING customer_id = 341;
   AD-HOC UTILITIES
 =====================================================================*/
 
--- QA ▸ Identify rentals with NO payment (revenue leakage)
+-- QA: Identify rentals with NO payment (revenue leakage)
 SELECT r.*
 FROM rental  AS r
 LEFT JOIN payment AS p USING (rental_id)
 WHERE p.payment_id IS NULL;
 
--- QA ▸ Full rental history for Barbara Jones 
+-- QB: Full rental history for Barbara Jones 
 SELECT r.*
 FROM customer AS c
 JOIN rental   AS r ON c.customer_id = r.customer_id
